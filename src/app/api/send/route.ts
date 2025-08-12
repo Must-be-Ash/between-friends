@@ -1,18 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { lookupRecipient } from '@/lib/recipient-lookup'
-import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval } from '@/lib/usdc'
+import { lookupRecipientServer } from '@/lib/recipient-lookup'
+import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval, hasSufficientETHForGas } from '@/lib/usdc'
 import { prepareSimpleEscrowDeposit, generateTransferId as generateSimpleTransferId } from '@/lib/simple-escrow'
 import { createPendingTransfer, getUserByUserId } from '@/lib/models'
 import { generateSecureToken } from '@/lib/utils'
-import { CONTRACT_ADDRESSES } from '@/lib/cdp'
+import { CONTRACT_ADDRESSES, CURRENT_NETWORK, calculateExpiryDate } from '@/lib/cdp'
 import { z } from 'zod'
 import { Address } from 'viem'
 
-// Helper function to calculate expiry date
-function calculateExpiryDate(days: number): Date {
-  const now = new Date()
-  now.setDate(now.getDate() + days)
-  return now
+// calculateExpiryDate is imported from @/lib/cdp
+
+// Helper function to recursively serialize BigInt values
+function serializeBigInt(obj: unknown): unknown {
+  if (typeof obj === 'bigint') {
+    return obj.toString()
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(serializeBigInt)
+  }
+  if (obj && typeof obj === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = serializeBigInt(value)
+    }
+    return result
+  }
+  return obj
 }
 
 // Validation schema
@@ -59,7 +72,14 @@ export async function POST(request: NextRequest) {
     }
     
     // Lookup recipient to determine transfer type
-    const recipient = await lookupRecipient(recipientEmail)
+    const recipient = await lookupRecipientServer(recipientEmail)
+    console.log('🔍 RECIPIENT LOOKUP RESULT:', {
+      email: recipientEmail,
+      recipient,
+      transferType: recipient.transferType,
+      exists: recipient.exists,
+      hasWallet: !!recipient.walletAddress
+    })
     
     if (recipient.transferType === 'direct') {
       // Direct transfer to existing user
@@ -78,16 +98,47 @@ export async function POST(request: NextRequest) {
           amount
         )
         
+        // Check if user has sufficient ETH for gas
+        const hasETHForGas = await hasSufficientETHForGas(
+          senderAddress as Address,
+          transaction.gas || BigInt(60000),
+          transaction.maxFeePerGas || BigInt(1000000000)
+        )
+        
         // Convert BigInt values to strings for JSON serialization
-        const serializedTransaction = {
-          ...transaction,
-          value: transaction.value?.toString(),
+        const serializedTransaction: Record<string, unknown> = {
+          to: transaction.to,
+          value: transaction.value?.toString() || '0',
+          data: transaction.data,
           gas: transaction.gas?.toString(),
           maxFeePerGas: transaction.maxFeePerGas?.toString(),
           maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
+          chainId: transaction.chainId,
+          type: transaction.type || 'eip1559',
+          gasSponsored: !hasETHForGas // Flag to indicate if gas is sponsored
         }
+        
+        // Only include gasLimit if it exists
+        if (transaction.gasLimit) {
+          serializedTransaction.gasLimit = transaction.gasLimit.toString()
+        }
+        
+        console.log('🔍 DIRECT TRANSFER TRANSACTION:', {
+          original: {
+            to: transaction.to,
+            value: transaction.value?.toString(),
+            gas: transaction.gas?.toString(),
+            maxFeePerGas: transaction.maxFeePerGas?.toString(),
+            maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
+            type: transaction.type
+          },
+          serialized: serializedTransaction
+        })
 
-        return NextResponse.json({
+        // Transaction record will be created in /send/complete after successful signing
+        // Don't create transaction here to avoid duplicates
+
+        const response = {
           success: true,
           transferType: 'direct',
           recipient: {
@@ -97,7 +148,9 @@ export async function POST(request: NextRequest) {
           },
           transaction: serializedTransaction,
           message: `Ready to send ${amount} USDC directly to ${recipient.displayName || recipient.email}`
-        })
+        }
+        
+        return NextResponse.json(serializeBigInt(response))
       } catch (error) {
         console.error('Direct transfer preparation error:', error)
         return NextResponse.json(
@@ -110,7 +163,7 @@ export async function POST(request: NextRequest) {
       try {
         // Generate transfer ID and claim token for SimpleEscrow
         const transferId = generateSimpleTransferId()
-        const claimToken = generateSecureToken(32)
+        const claimToken = generateSecureToken()
         const expiryDate = calculateExpiryDate(7) // 7 days
         
         // For SimpleEscrow, we need to check allowance for the new contract
@@ -118,8 +171,8 @@ export async function POST(request: NextRequest) {
         const { SIMPLE_ESCROW_ADDRESS } = await import('@/lib/simple-escrow')
         
         // Check if SimpleEscrow is deployed, otherwise fallback to old escrow
-        const useSimpleEscrow = SIMPLE_ESCROW_ADDRESS && SIMPLE_ESCROW_ADDRESS !== '0x0000000000000000000000000000000000000000'
-        const escrowAddress = useSimpleEscrow ? SIMPLE_ESCROW_ADDRESS : CONTRACT_ADDRESSES.ESCROW
+        const useSimpleEscrow = SIMPLE_ESCROW_ADDRESS && SIMPLE_ESCROW_ADDRESS !== '0x0000000000000000000000000000000000000001'
+        const escrowAddress = useSimpleEscrow ? SIMPLE_ESCROW_ADDRESS : CONTRACT_ADDRESSES.ESCROW[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.ESCROW]
         
         const hasAllowance = await hasSufficientAllowance(
           senderAddress as Address,
@@ -132,18 +185,18 @@ export async function POST(request: NextRequest) {
         
         if (!hasAllowance) {
           // Prepare approval transaction for the correct escrow contract
-          const approvalTx = await prepareUSDCApproval(
-            senderAddress as Address,
-            escrowAddress as Address,
+          const approvalTx = prepareUSDCApproval(
+            senderAddress as string,
+            escrowAddress as string,
             amount
           )
           // Serialize BigInt values
           const serializedApprovalTx = {
             ...approvalTx,
             value: approvalTx.value.toString(),
-            gas: approvalTx.gas.toString(),
-            maxFeePerGas: approvalTx.maxFeePerGas.toString(),
-            maxPriorityFeePerGas: approvalTx.maxPriorityFeePerGas.toString(),
+            gas: approvalTx.gas?.toString(),
+            maxFeePerGas: approvalTx.maxFeePerGas?.toString(),
+            maxPriorityFeePerGas: approvalTx.maxPriorityFeePerGas?.toString(),
             description: `Approve USDC for ${useSimpleEscrow ? 'new' : 'legacy'} escrow contract`
           }
           transactions.push(serializedApprovalTx)
@@ -156,14 +209,11 @@ export async function POST(request: NextRequest) {
           
           if (useSimpleEscrow) {
             // Use new SimpleEscrow contract
-            depositTx = await prepareSimpleEscrowDeposit(
-              senderAddress as Address,
-              amount,
+            depositTx = prepareSimpleEscrowDeposit({
               transferId,
-              recipientEmail, // email for claim secret generation
-              claimToken,
-              7 // 7 days timeout
-            )
+              recipientEmail,
+              amount
+            })
           } else {
             // Only SimpleEscrow is supported
             throw new Error('Simple escrow is required')
@@ -172,8 +222,9 @@ export async function POST(request: NextRequest) {
           // Serialize BigInt values
           const serializedDepositTx = {
             ...depositTx,
-            value: depositTx.value?.toString(),
+            value: depositTx.value?.toString() || '0',
             gas: depositTx.gas?.toString(),
+            gasLimit: depositTx.gasLimit?.toString(),
             maxFeePerGas: depositTx.maxFeePerGas?.toString(),
             maxPriorityFeePerGas: depositTx.maxPriorityFeePerGas?.toString(),
             description: `Deposit USDC to ${useSimpleEscrow ? 'new' : 'legacy'} escrow`
@@ -199,14 +250,22 @@ export async function POST(request: NextRequest) {
         // Store pending transfer in database
         await createPendingTransfer({
           transferId,
+          senderUserId: userId,
           senderEmail,
           recipientEmail,
           amount,
+          status: 'pending',
+          type: 'escrow',
           claimToken,
           expiryDate,
+          createdAt: new Date(),
+          updatedAt: new Date()
         })
         
-        return NextResponse.json({
+        // Transaction record will be created in /send/complete after successful signing
+        // Don't create transaction here to avoid duplicates
+        
+        const response = {
           success: true,
           transferType: 'escrow',
           recipient: {
@@ -214,12 +273,14 @@ export async function POST(request: NextRequest) {
           },
           transfer: {
             transferId,
-            expiryDate,
+            expiryDate: expiryDate.toISOString(),
           },
           transactions,
           requiresApproval: !hasAllowance,
           message: `Ready to send ${amount} USDC via escrow to ${recipient.email}. ${!hasAllowance ? 'Approval required first. ' : ''}They will receive an email to claim the funds.`
-        })
+        }
+        
+        return NextResponse.json(serializeBigInt(response))
       } catch (error) {
         console.error('Escrow transfer preparation error:', error)
         return NextResponse.json(

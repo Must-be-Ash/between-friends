@@ -48,16 +48,19 @@ export async function POST(request: NextRequest) {
           console.error('Failed to send claim notification email:', emailResult.error)
         }
 
-        // Create transaction record for sender
-        await createTransaction({
-          userEmail: senderEmail,
-          type: 'sent',
-          recipientEmail: transfer.recipientEmail,
-          amount: transfer.amount,
-          txHash,
-          transferId,
-          status: 'confirmed',
-        })
+        // Create transaction record for sender (if they have an account)
+        if (sender) {
+          await createTransaction({
+            userId: sender.userId,
+            userEmail: senderEmail,
+            type: 'sent',
+            counterpartyEmail: transfer.recipientEmail, // Who they sent money TO
+            amount: `-${transfer.amount}`, // Negative for money leaving account
+            txHash,
+            transferId,
+            status: 'confirmed',
+          })
+        }
 
         return NextResponse.json({
           success: true,
@@ -76,25 +79,32 @@ export async function POST(request: NextRequest) {
       const body = await request.json()
       const { recipientEmail, amount } = body
 
-      // Create transaction record for sender
-      await createTransaction({
-        userEmail: senderEmail,
-        type: 'sent',
-        recipientEmail,
-        amount,
-        txHash,
-        status: 'confirmed',
-      })
+      // Get sender information for transaction record
+      const sender = await getUserByEmail(senderEmail)
+
+      // Create transaction record for sender (if they have an account)
+      if (sender) {
+        await createTransaction({
+          userId: sender.userId,
+          userEmail: senderEmail,
+          type: 'sent',
+          counterpartyEmail: recipientEmail, // Who they sent money TO
+          amount: `-${amount}`, // Negative for money leaving account
+          txHash,
+          status: 'confirmed',
+        })
+      }
 
       // Create transaction record for recipient (if they have an account)
       try {
         const recipient = await getUserByEmail(recipientEmail)
         if (recipient) {
           await createTransaction({
+            userId: recipient.userId,
             userEmail: recipientEmail,
             type: 'received',
-            senderEmail,
-            amount,
+            counterpartyEmail: senderEmail, // Who they received money FROM
+            amount: `+${amount}`, // Positive for money entering account
             txHash,
             status: 'confirmed',
           })

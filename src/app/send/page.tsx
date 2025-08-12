@@ -134,14 +134,15 @@ export default function SendPage() {
         <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
           
           {/* Back Button */}
-          <div className="text-center">
+          <div className="flex items-center justify-between mb-8">
             <button
               onClick={handleTopBackButton}
-              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors mb-8"
+              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back</span>
             </button>
+            <div></div>
           </div>
 
           {currentStep === 'input' && currentUser && (

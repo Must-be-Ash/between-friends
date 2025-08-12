@@ -131,14 +131,13 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
 
       {/* QR Code & Wallet Address */}
       <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-2xl text-center">
-        <h3 className="text-lg font-semibold text-white mb-6">QR Code & Address</h3>
         {isGenerating ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-2 border-[#4A4A4A] border-t-[#B8B8B8] rounded-full animate-spin"></div>
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-2xl p-4 inline-block mb-6">
+            <div className="bg-white rounded-2xl p-4 inline-block mb-2">
               <Image 
                 src={qrCodeUrl} 
                 alt="Payment QR Code"

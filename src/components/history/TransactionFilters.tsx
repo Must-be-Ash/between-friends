@@ -21,7 +21,8 @@ export function TransactionFilters({
   const [localSearch, setLocalSearch] = useState(currentSearch)
 
   const handleTypeChange = (type: FilterType) => {
-    onFilterChange(type, currentStatus, currentSearch)
+    // Reset status to 'all' when changing type filters to avoid combining filters
+    onFilterChange(type, 'all', currentSearch)
   }
 
 
@@ -87,7 +88,7 @@ export function TransactionFilters({
               key={filter.key}
               onClick={() => handleTypeChange(filter.key)}
               className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                currentType === filter.key
+                currentType === filter.key && (filter.key !== 'all' || currentStatus === 'all')
                   ? 'bg-white/30 text-white border border-white/40'
                   : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/20'
               }`}

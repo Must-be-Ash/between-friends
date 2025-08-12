@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       contacts: contacts.map(contact => ({
-        _id: contact._id.toString(),
+        _id: contact._id?.toString() || '',
         contactEmail: contact.contactEmail,
         displayName: contact.displayName,
         firstName: contact.firstName,
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
         phoneNumber: contact.phoneNumber,
         avatar: contact.avatar,
         hasAccount: contact.hasAccount,
-        lastUsedAt: contact.lastUsedAt,
+        lastUsedAt: contact.lastUsedAt || contact.lastUsed,
         source: contact.source,
-        favorite: contact.favorite,
+        favorite: contact.favorite ?? contact.isFavorite,
         createdAt: contact.createdAt
       }))
     })
@@ -121,10 +121,17 @@ export async function POST(request: NextRequest) {
       
       const contact = await createContact(contactData)
       
+      if (!contact) {
+        return NextResponse.json(
+          { error: 'Failed to create contact' },
+          { status: 500 }
+        )
+      }
+      
       return NextResponse.json({
         success: true,
         contact: {
-          _id: contact._id.toString(),
+          _id: contact._id?.toString() || '',
           contactEmail: contact.contactEmail,
           displayName: contact.displayName,
           firstName: contact.firstName,
@@ -132,9 +139,9 @@ export async function POST(request: NextRequest) {
           phoneNumber: contact.phoneNumber,
           avatar: contact.avatar,
           hasAccount: contact.hasAccount,
-          lastUsedAt: contact.lastUsedAt,
+          lastUsedAt: contact.lastUsedAt || contact.lastUsed,
           source: contact.source,
-          favorite: contact.favorite,
+          favorite: contact.favorite ?? contact.isFavorite,
           createdAt: contact.createdAt
         }
       })

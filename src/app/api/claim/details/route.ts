@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     // Check if transfer has expired
     const now = new Date()
-    if (now > pendingTransfer.expiryDate) {
+    if (pendingTransfer.expiryDate && now > pendingTransfer.expiryDate) {
       return NextResponse.json(
         { error: 'This transfer has expired' },
         { status: 400 }

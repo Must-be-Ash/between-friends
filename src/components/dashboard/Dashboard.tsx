@@ -193,7 +193,7 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-[#222222]">
       {/* Main Content with glassmorphism container */}
-      <div className="px-4 py-6">
+      <div className="px-4 pt-10 pb-6">
         <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
           {/* Balance Card */}
           <BalanceCard 

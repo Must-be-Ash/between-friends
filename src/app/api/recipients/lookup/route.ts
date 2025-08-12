@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { lookupRecipient, lookupMultipleRecipients } from '@/lib/recipient-lookup'
+import { lookupRecipientServer, lookupMultipleRecipientsServer } from '@/lib/recipient-lookup'
 import { z } from 'zod'
 
 // Validation schemas
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (body.email) {
       // Single recipient lookup
       const { email } = SingleLookupSchema.parse(body)
-      const result = await lookupRecipient(email)
+      const result = await lookupRecipientServer(email)
       
       return NextResponse.json({
         success: true,
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     } else if (body.emails) {
       // Multiple recipients lookup
       const { emails } = MultipleLookupSchema.parse(body)
-      const results = await lookupMultipleRecipients(emails)
+      const results = await lookupMultipleRecipientsServer(emails)
       
       return NextResponse.json({
         success: true,
@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
     const emailSchema = z.string().email()
     const validatedEmail = emailSchema.parse(email)
     
-    const result = await lookupRecipient(validatedEmail)
-    
+    const result = await lookupRecipientServer(validatedEmail)
+
     return NextResponse.json({
       success: true,
       exists: result.exists,

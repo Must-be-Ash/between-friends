@@ -57,19 +57,22 @@ export async function POST(request: NextRequest) {
       // Update pending transfer status to refunded
       await updatePendingTransferStatus(transferId, 'refunded', refundTxHash)
 
-      // Create transaction history record for sender
-      await createTransaction({
-        userEmail: senderEmail,
-        type: 'refund',
-        amount: pendingTransfer.amount,
-        txHash: refundTxHash,
-        transferId,
-        status: 'confirmed',
-        recipientEmail: pendingTransfer.recipientEmail,
-      })
-
-      // Get sender display name for email
+      // Get sender display name for email and create transaction record
       const sender = await getUserByEmail(senderEmail)
+      
+      // Create transaction history record for sender (if they have an account)
+      if (sender) {
+        await createTransaction({
+          userId: sender.userId,
+          userEmail: senderEmail,
+          type: 'refund',
+          counterpartyEmail: pendingTransfer.recipientEmail, // Who the refund was originally intended for
+          amount: `+${pendingTransfer.amount}`, // Positive amount for refund (money coming back)
+          txHash: refundTxHash,
+          transferId,
+          status: 'confirmed',
+        })
+      }
       const senderDisplayName = sender?.displayName || senderEmail.split('@')[0]
 
       // Send refund confirmation email
@@ -78,6 +81,7 @@ export async function POST(request: NextRequest) {
         senderName: senderDisplayName,
         recipientEmail: pendingTransfer.recipientEmail,
         amount: pendingTransfer.amount,
+        reason: 'Transfer refunded by sender',
         refundTxHash
       })
 

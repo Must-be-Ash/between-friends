@@ -59,8 +59,9 @@ project-breakdown.md
 # Foundry/Forge
 cache/
 out/
-lib/
 .gas-snapshot
+/lib/
+!src/lib/
 
 # Git
 .git/

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     
     // Check if not expired
     const now = new Date()
-    if (now > transfer.expiryDate) {
+    if (transfer.expiryDate && now > transfer.expiryDate) {
       return NextResponse.json(
         { error: 'Transfer has expired' },
         { status: 400 }
@@ -106,13 +106,11 @@ export async function POST(request: NextRequest) {
       })
 
       // Prepare the admin release transaction
-      const transaction = await prepareSimpleEscrowAdminRelease(
-        adminAccount.address,
+      const transaction = await prepareSimpleEscrowAdminRelease({
         transferId,
-        claimer.email,
-        claimToken,
-        claimer.walletAddress as Address
-      )
+        recipientAddress: claimer.walletAddress as Address,
+        amount: transfer.amount
+      })
 
       // Send transaction from admin wallet (admin pays gas!)
       const txHash = await adminClient.sendTransaction({
@@ -129,13 +127,14 @@ export async function POST(request: NextRequest) {
 
       // Record the transaction for the recipient
       await createTransaction({
+        userId: claimer.userId,
         userEmail: claimer.email,
         type: 'received',
-        amount: transfer.amount,
+        counterpartyEmail: transfer.senderEmail, // Who they received money FROM
+        amount: `+${transfer.amount}`, // Positive for money entering account
         txHash: txHash,
         transferId,
         status: 'confirmed',
-        senderEmail: transfer.senderEmail,
       })
 
       return NextResponse.json({

@@ -11,13 +11,13 @@ import { TransactionList } from '@/components/history/TransactionList'
 import { TransactionFilters } from '@/components/history/TransactionFilters'
 import { TransactionStats } from '@/components/history/TransactionStats'
 import { NavigationDock } from '@/components/navigation/NavigationDock'
+import { SendButton3D } from '@/components/ui/send-button-3d'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 
 interface Transaction {
   _id: string
-  type: 'sent_direct' | 'sent_escrow' | 'received_direct' | 'received_claim'
-  recipientEmail?: string
-  senderEmail?: string
+  type: 'sent' | 'received' | 'refund'
+  counterpartyEmail: string // The other person in the transaction
   amount: string
   txHash?: string
   transferId?: string
@@ -134,8 +134,8 @@ export default function HistoryPage() {
   // Calculate stats from transactions
   const stats = {
     total: transactions.length,
-    sent: transactions.filter(t => t.type.startsWith('sent')).length,
-    received: transactions.filter(t => t.type.startsWith('received')).length,
+    sent: transactions.filter(t => t.type === 'sent').length,
+    received: transactions.filter(t => t.type === 'received').length,
     pending: transactions.filter(t => t.status === 'pending' || t.status === 'unclaimed').length
   }
 
@@ -146,7 +146,7 @@ export default function HistoryPage() {
         <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
           
           {/* Back Button */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-8">
             <button
               onClick={() => router.push('/')}
               className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
@@ -157,7 +157,7 @@ export default function HistoryPage() {
             <button
               onClick={handleRefresh}
               disabled={isLoading}
-              className="p-2 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
+              className="rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
               aria-label="Refresh"
             >
               <RefreshCw className={`w-5 h-5 text-[#B8B8B8] ${isLoading ? 'animate-spin' : ''}`} />
@@ -217,28 +217,25 @@ export default function HistoryPage() {
                     : 'You haven\'t made any USDC transfers yet.'
                   }
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <div className="space-y-4">
+                  <SendButton3D onClick={() => router.push('/send')}>
+                    Send Your First Payment
+                  </SendButton3D>
+                  
                   {(searchQuery || filterType !== 'all' || filterStatus !== 'all') && (
                     <button
                       onClick={() => handleFilterChange('all', 'all', '')}
-                      className="px-4 py-2 bg-white/10 text-white rounded-xl font-medium hover:bg-white/20 transition-colors border border-white/30"
+                      className="w-full px-4 py-2 bg-white/10 text-white rounded-xl font-medium hover:bg-white/20 transition-colors border border-white/30"
                     >
                       Clear Filters
                     </button>
                   )}
-                  <button
-                    onClick={() => router.push('/send')}
-                    className="px-4 py-2 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-colors border border-white/30"
-                  >
-                    Send Your First Payment
-                  </button>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <TransactionList 
                   transactions={transactions}
-                  currentUserId={currentUser.userId}
                 />
                 
                 {/* Load More Button */}

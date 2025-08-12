@@ -48,6 +48,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    console.log('🔍 TRANSACTIONS QUERY:', {
+      userId,
+      userEmail: user.email,
+      limit,
+      offset,
+      type,
+      status,
+      search
+    })
+
     // Use enhanced query function with filtering
     const transactions = await getTransactionsByUserWithFilters(
       user.email, 
@@ -57,6 +67,8 @@ export async function GET(request: NextRequest) {
       status,
       search
     )
+
+    console.log('🔍 TRANSACTIONS FOUND:', transactions.length)
 
     return NextResponse.json({
       success: true,

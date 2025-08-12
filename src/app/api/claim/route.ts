@@ -30,27 +30,31 @@ export async function POST(request: NextRequest) {
     // Update pending transfer status to claimed
     await updatePendingTransferStatus(transferId, 'claimed', txHash)
 
-    // Create transaction history record for recipient
-    await createTransaction({
-      userEmail: recipientEmail,
-      type: 'received_claim',
-      amount: transfer.amount,
-      txHash,
-      transferId,
-      status: 'confirmed',
-      senderEmail: transfer.senderEmail,
-    })
-
-    // Get recipient display name for email
+    // Get recipient display name for email and create transaction record
     const recipient = await getUserByEmail(recipientEmail)
+    
+    // Create transaction history record for recipient (if they have an account)
+    if (recipient) {
+      await createTransaction({
+        userId: recipient.userId,
+        userEmail: recipientEmail,
+        type: 'received',
+        counterpartyEmail: transfer.senderEmail, // Who they received the claim FROM
+        amount: `+${transfer.amount}`, // Positive amount for received
+        txHash,
+        transferId,
+        status: 'confirmed',
+      })
+    }
     const recipientDisplayName = recipient?.displayName || recipientEmail.split('@')[0]
 
     // Send claim success email
     const emailResult = await sendClaimSuccessEmail({
       recipientEmail,
-      recipientName: recipientDisplayName,
       senderEmail: transfer.senderEmail,
       amount: transfer.amount,
+      txHash,
+      recipientName: recipientDisplayName,
       claimTxHash: txHash
     })
 

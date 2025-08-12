@@ -38,12 +38,13 @@ export async function POST(request: NextRequest) {
     const senderEmail = sender.email
     const recipientEmail = recipient.email
     
-    // Create transaction record for sender
+    // Create transaction record for sender (shows who they sent money TO)
     await createTransaction({
+      userId: userId,
       userEmail: senderEmail,
       type: 'sent',
-      recipientEmail: recipientEmail,
-      amount: amount,
+      counterpartyEmail: recipientEmail, // This is who the sender sent money TO
+      amount: `-${amount}`, // Negative amount to show money leaving account
       txHash: txHash,
       transferId: transferId,
       status: transferType === 'direct' ? 'confirmed' : 'pending',
@@ -64,10 +65,11 @@ export async function POST(request: NextRequest) {
         const recipientUser = await getUserByEmail(recipientEmail)
         if (recipientUser) {
           await createTransaction({
+            userId: recipientUser.userId,
             userEmail: recipientEmail,
             type: 'received',
-            senderEmail: senderEmail,
-            amount: amount,
+            counterpartyEmail: senderEmail, // This is who the recipient received money FROM
+            amount: `+${amount}`, // Positive amount to show money entering account
             txHash: txHash,
             status: 'confirmed',
           })

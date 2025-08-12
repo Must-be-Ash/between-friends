@@ -71,17 +71,39 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       let finalTxHash: string | null = null
 
       if (result.transferType === 'direct') {
+        // Check if gas sponsorship is needed
+        if (result.transaction.gasSponsored) {
+          setCurrentStep('Processing gas-sponsored transfer...')
+          
+          // TODO: Implement gas-sponsored flow
+          // This would require user to sign an approval and let admin handle gas
+          console.log('🎁 GAS SPONSORSHIP NEEDED - User has insufficient ETH for gas')
+          
+          // For now, show a message and exit - in production this would trigger the sponsored flow
+          alert('✨ Gas sponsorship detected! This feature will cover your gas fees when you have insufficient ETH.')
+          onSuccess('gas-sponsored-pending')
+          return // Skip normal flow for now
+        }
+        
         // Single transaction - direct USDC transfer
         setCurrentStep('Sending USDC...')
         
         // Convert string values back to BigInt for CDP
+        console.log('🔍 RAW TRANSACTION FROM API:', result.transaction)
+        
         const transaction = {
-          ...result.transaction,
+          to: result.transaction.to as `0x${string}`,
+          data: result.transaction.data as `0x${string}`,
           value: result.transaction.value ? BigInt(result.transaction.value) : 0n,
           gas: result.transaction.gas ? BigInt(result.transaction.gas) : undefined,
           maxFeePerGas: result.transaction.maxFeePerGas ? BigInt(result.transaction.maxFeePerGas) : undefined,
           maxPriorityFeePerGas: result.transaction.maxPriorityFeePerGas ? BigInt(result.transaction.maxPriorityFeePerGas) : undefined,
+          chainId: result.transaction.chainId as number,
+          type: result.transaction.type as "eip1559",
+          ...(result.transaction.gasLimit && { gasLimit: BigInt(result.transaction.gasLimit) })
         }
+        
+        console.log('🔍 CONVERTED TRANSACTION FOR CDP:', transaction)
         
         console.log('🔐 CDP TRANSACTION SIGNING:', {
           type: 'Direct Transfer',
@@ -118,17 +140,13 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
             if (tx.type === 'simple_escrow_deposit') {
               // Prepare the new SimpleEscrow deposit transaction
               const { prepareSimpleEscrowDeposit } = await import('@/lib/simple-escrow')
-              const { senderAddress, amount, transferId, recipientEmail, claimToken, timeoutDays } = tx.parameters
+              const { amount, transferId, recipientEmail } = tx.parameters
               
-              depositTx = await prepareSimpleEscrowDeposit(
-                senderAddress,
-                amount,
+              depositTx = prepareSimpleEscrowDeposit({
                 transferId,
                 recipientEmail,
-                claimToken,
-                timeoutDays,
-                true // Skip gas estimation since this is after approval
-              )
+                amount
+              })
             } else {
               // This should not happen - only SimpleEscrow is supported
               throw new Error('Legacy escrow deposit is no longer supported')

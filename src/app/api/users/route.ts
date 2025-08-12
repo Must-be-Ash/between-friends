@@ -47,6 +47,13 @@ export async function POST(request: NextRequest) {
 
     const user = await createUser(userData)
     
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      )
+    }
+    
     // Check for pending transfers for this new user
     const pendingTransfers = await getPendingTransfersByRecipient(validatedData.email.toLowerCase())
     const pendingClaims = pendingTransfers

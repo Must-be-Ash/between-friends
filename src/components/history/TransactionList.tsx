@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import { formatTimeAgo, getBlockExplorerUrl, copyToClipboard } from '@/lib/utils'
-import { TransactionDetail } from './TransactionDetail'
 
 interface Transaction {
   _id: string
-  type: 'sent_direct' | 'sent_escrow' | 'received_direct' | 'received_claim'
-  recipientEmail?: string
-  senderEmail?: string
+  type: 'sent' | 'received' | 'refund'
+  counterpartyEmail: string // The other person in the transaction
   amount: string
   txHash?: string
   transferId?: string
@@ -19,10 +17,9 @@ interface Transaction {
 
 interface TransactionListProps {
   transactions: Transaction[]
-  currentUserId: string
 }
 
-export function TransactionList({ transactions, currentUserId }: TransactionListProps) {
+export function TransactionList({ transactions }: TransactionListProps) {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [copiedTx, setCopiedTx] = useState<string | null>(null)
 
@@ -49,14 +46,9 @@ export function TransactionList({ transactions, currentUserId }: TransactionList
   // Remove transaction title - keeping minimal design
 
   const getTransactionEmail = (transaction: Transaction) => {
-    const isSent = transaction.type.startsWith('sent')
-    
-    if (isSent && transaction.recipientEmail) {
-      return transaction.recipientEmail
-    }
-    
-    if (!isSent && transaction.senderEmail) {
-      return transaction.senderEmail
+    // Return the counterparty email (who they sent money to or received money from)
+    if (transaction.counterpartyEmail) {
+      return transaction.counterpartyEmail
     }
     
     return 'Unknown'
@@ -84,11 +76,18 @@ export function TransactionList({ transactions, currentUserId }: TransactionList
             : isSent 
               ? 'text-[#CC8888]' 
               : 'text-[#B8D8B8]'
+          
+          // Handle amount display - amount already includes +/- sign from database
+          const rawAmount = transaction.amount
+          const hasSign = rawAmount.startsWith('+') || rawAmount.startsWith('-')
           const amountPrefix = transaction.status === 'failed' 
             ? '' 
-            : isSent 
-              ? '-' 
-              : '+'
+            : hasSign 
+              ? rawAmount.charAt(0) // Use the existing sign from database
+              : isSent 
+                ? '-' 
+                : '+'
+          const displayAmount = hasSign ? rawAmount.substring(1) : rawAmount // Remove existing sign from amount
 
           return (
             <div 
@@ -101,7 +100,7 @@ export function TransactionList({ transactions, currentUserId }: TransactionList
                   {getTransactionEmail(transaction)}
                 </p>
                 <div className={`font-semibold text-lg ${amountColor}`}>
-                  {amountPrefix}${transaction.amount}
+                  {amountPrefix}${displayAmount}
                 </div>
               </div>
               
@@ -150,12 +149,28 @@ export function TransactionList({ transactions, currentUserId }: TransactionList
 
       {/* Transaction Detail Modal */}
       {selectedTransaction && (
-        <TransactionDetail
-          transaction={selectedTransaction}
-          currentUserId={currentUserId}
-          isOpen={!!selectedTransaction}
-          onClose={() => setSelectedTransaction(null)}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#2A2A2A] rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-white">Transaction Details</h2>
+              <button
+                onClick={() => setSelectedTransaction(null)}
+                className="text-[#B8B8B8] hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4 text-white">
+              <p><strong>To/From:</strong> {selectedTransaction.counterpartyEmail || 'Unknown'}</p>
+              <p><strong>Amount:</strong> ${selectedTransaction.amount}</p>
+              <p><strong>Status:</strong> {selectedTransaction.status}</p>
+              <p><strong>Date:</strong> {new Date(selectedTransaction.createdAt).toLocaleString()}</p>
+              {selectedTransaction.txHash && (
+                <p><strong>TX Hash:</strong> {selectedTransaction.txHash.slice(0, 10)}...</p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
