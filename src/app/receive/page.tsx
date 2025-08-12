@@ -3,11 +3,12 @@
 // Force dynamic rendering for this page to avoid SSR issues
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import React from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsSignedIn, useEvmAddress } from '@coinbase/cdp-hooks'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { SimpleReceive } from '@/components/receive/SimpleReceive'
+import { NavigationDock } from '@/components/navigation/NavigationDock'
 
 export default function ReceivePage() {
   const router = useRouter()
@@ -26,34 +27,19 @@ export default function ReceivePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 safe-area-inset">
-        <div className="px-4 py-4">
-          <div className="flex items-center">
-            <button
-              onClick={() => router.back()}
-              className="p-2 -ml-2 mr-3 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Go back"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Receive Money</h1>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#222222]">
+      {/* Main Content with glassmorphism container */}
+      <div className="px-4 py-6">
+        <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
+          <SimpleReceive address={evmAddress} />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-6">
-        <SimpleReceive address={evmAddress} />
-      </div>
+      {/* Navigation Dock */}
+      <NavigationDock />
 
       {/* Bottom spacing for mobile navigation */}
-      <div className="h-20"></div>
+      <div className="h-32 md:h-16"></div>
     </div>
   )
 }

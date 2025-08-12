@@ -11,7 +11,7 @@ export function MainPage() {
 
   // Show loading while CDP initializes
   if (!isInitialized) {
-    return <LoadingScreen message="Initializing Between Friends..." />
+    return <LoadingScreen message="loading..." />
   }
 
   // Show authentication if not signed in

@@ -2,18 +2,41 @@ import { ObjectId } from 'mongodb'
 
 export interface Contact {
   _id: ObjectId
-  ownerEmail: string         // Contact list owner
+  ownerUserId: string        // Contact list owner (using userId instead of email)
   contactEmail: string       // Contact's email
   displayName: string        // Friendly name
+  firstName?: string         // For device contacts
+  lastName?: string          // For device contacts
+  phoneNumber?: string       // For device contacts
+  avatar?: string            // Avatar URL or base64 image
   hasAccount: boolean        // Cache if contact has account
   lastUsedAt: Date          // For sorting by recency
+  source: 'manual' | 'device' | 'transaction' // How contact was added
+  favorite: boolean         // User marked as favorite
+  createdAt: Date
 }
 
 export interface CreateContactData {
-  ownerEmail: string
+  ownerUserId: string
   contactEmail: string
   displayName: string
+  firstName?: string
+  lastName?: string
+  phoneNumber?: string
+  avatar?: string
   hasAccount: boolean
+  source?: 'manual' | 'device' | 'transaction'
+  favorite?: boolean
+}
+
+export interface DeviceContact {
+  id: string
+  firstName?: string
+  lastName?: string
+  displayName: string
+  emails: string[]
+  phoneNumbers: string[]
+  avatar?: string
 }
 
 export interface PendingTransfer {

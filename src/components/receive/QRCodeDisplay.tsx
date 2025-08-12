@@ -32,7 +32,7 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
     setIsGenerating(true)
     try {
       // Create payment URL - this would open the send page with pre-filled data
-      const baseUrl = window.location.origin
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
       const params = new URLSearchParams()
       
       // Add wallet address
@@ -127,8 +127,8 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
         <div className="text-center">
           {isGenerating ? (
             <div className="flex flex-col items-center py-16">
-              <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4"></div>
-              <p className="text-gray-600">Generating QR code...</p>
+              <div className="w-16 h-16 border-4 border-[#4A4A4A] border-t-[#B8B8B8] rounded-full animate-spin mb-4"></div>
+              <p className="text-[#B8B8B8]">Generating QR code...</p>
             </div>
           ) : (
             <>

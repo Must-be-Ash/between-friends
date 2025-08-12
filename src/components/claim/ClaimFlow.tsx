@@ -27,11 +27,32 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
     setError('')
 
     try {
+      // Get claim signature from backend API
+      const claimResponse = await fetch('/api/claim/prepare', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transferId: transferData.transferId,
+          recipientEmail: currentUser.email || transferData.recipientEmail,
+          recipientAddress: evmAddress,
+        }),
+      })
+
+      if (!claimResponse.ok) {
+        const errorData = await claimResponse.json()
+        throw new Error(errorData.error || 'Failed to prepare claim')
+      }
+
+      const { deadline, signature } = await claimResponse.json()
+
       // Prepare escrow claim transaction
       const transaction = await prepareEscrowClaim(
         transferData.transferId,
         evmAddress,
-        currentUser.email || transferData.recipientEmail
+        deadline,
+        signature
       )
 
       // Execute transaction via CDP
@@ -173,7 +194,7 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
           >
             {isProcessing ? (
               <div className="flex items-center justify-center">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                <div className="w-4 h-4 border-2 border-[#B8B8B8] border-t-transparent rounded-full animate-spin mr-2"></div>
                 Claiming funds...
               </div>
             ) : (

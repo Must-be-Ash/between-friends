@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getTransactionsByUser, getUserByUserId } from '@/lib/models'
+import { getTransactionsByUserWithFilters, getUserByUserId } from '@/lib/models'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -10,6 +10,9 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId')
     const limitParam = searchParams.get('limit')
     const offsetParam = searchParams.get('offset')
+    const type = searchParams.get('type') || 'all'
+    const status = searchParams.get('status') || 'all'
+    const search = searchParams.get('search') || ''
     
     if (!userId) {
       return NextResponse.json(
@@ -45,16 +48,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const transactions = await getTransactionsByUser(user.email, limit, offset)
+    // Use enhanced query function with filtering
+    const transactions = await getTransactionsByUserWithFilters(
+      user.email, 
+      limit, 
+      offset,
+      type,
+      status,
+      search
+    )
 
     return NextResponse.json({
       success: true,
       transactions,
-      pagination: {
-        limit,
-        offset,
-        hasMore: transactions.length === limit
-      }
+      hasMore: transactions.length === limit
     })
   } catch (error) {
     console.error('Transactions API error:', error)

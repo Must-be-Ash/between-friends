@@ -4,11 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { useCurrentUser, useEvmAddress, useSignOut } from '@coinbase/cdp-hooks'
 import { getUSDCBalance } from '@/lib/usdc'
 import { BalanceCard } from './BalanceCard'
-import { AccountInfo } from './AccountInfo'
+import { AccountInfoWithAvatar } from '@/components/dashboard/AccountInfoWithAvatar'
+import { NavigationDock } from '@/components/navigation/NavigationDock'
 import { QuickActions } from './QuickActions'
-import { RecentTransactions } from './RecentTransactions'
-import { PendingClaims } from './PendingClaims'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
+import { ClaimOnboarding } from '@/components/onboarding/ClaimOnboarding'
 
 export function Dashboard() {
   const currentUser = useCurrentUser()
@@ -19,6 +19,8 @@ export function Dashboard() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
   const [userProfile, setUserProfile] = useState<any>(null)
   const [showLogoutMenu, setShowLogoutMenu] = useState(false)
+  const [pendingClaims, setPendingClaims] = useState<any[]>([])
+  const [showClaimOnboarding, setShowClaimOnboarding] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // Fetch user profile and balance
@@ -65,9 +67,16 @@ export function Dashboard() {
       })
 
       if (response.ok) {
-        const { user } = await response.json()
+        const { user, pendingClaims: claims } = await response.json()
         setUserProfile(user)
-        console.log('Auto-created user profile for existing CDP user')
+        
+        // If new user has pending claims, show onboarding flow
+        if (claims && claims.length > 0) {
+          setPendingClaims(claims)
+          setShowClaimOnboarding(true)
+        }
+        
+        console.log('Auto-created user profile for existing CDP user', claims ? `with ${claims.length} pending claims` : '')
       } else {
         console.error('Failed to create user profile')
       }
@@ -141,82 +150,61 @@ export function Dashboard() {
     }
   }
 
+  // Show claim onboarding for new users with pending transfers
+  if (showClaimOnboarding && pendingClaims.length > 0 && userProfile && currentUser && evmAddress) {
+    return (
+      <ClaimOnboarding
+        pendingClaims={pendingClaims}
+        userEmail={userProfile.email}
+        walletAddress={evmAddress}
+        userId={currentUser.userId}
+        onComplete={() => {
+          setShowClaimOnboarding(false)
+          setPendingClaims([])
+          // Refresh balance after claims
+          fetchBalance()
+        }}
+      />
+    )
+  }
+
   if (!currentUser || !evmAddress) {
     return <LoadingScreen message="Loading dashboard..." />
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with safe area */}
-      <div className="bg-white border-b border-gray-200 safe-area-inset">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Between Friends</h1>
-              <p className="text-gray-600">Welcome back, {userProfile?.displayName || 'User'}!</p>
-            </div>
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowLogoutMenu(!showLogoutMenu)}
-                className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center hover:bg-primary-200 transition-colors"
-                aria-label="User menu"
-              >
-                <span className="text-primary-700 font-semibold">
-                  {(userProfile?.displayName || currentUser.userId || 'U').charAt(0).toUpperCase()}
-                </span>
-              </button>
+    <div className="min-h-screen bg-[#222222]">
+      {/* Main Content with glassmorphism container */}
+      <div className="px-4 py-6">
+        <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
+          {/* Balance Card */}
+          <BalanceCard 
+            balance={balance}
+            isLoading={isLoadingBalance}
+            onRefresh={refreshBalance}
+          />
 
-              {/* Logout Menu */}
-              {showLogoutMenu && (
-                <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{userProfile?.displayName || 'User'}</p>
-                    <p className="text-xs text-gray-500 truncate">{currentUser.userId}</p>
-                  </div>
-                  
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Quick Actions */}
+          <QuickActions />
+
+          {/* Account Info with Avatar */}
+          <AccountInfoWithAvatar 
+            user={userProfile}
+            walletAddress={evmAddress}
+            showLogoutMenu={showLogoutMenu}
+            setShowLogoutMenu={setShowLogoutMenu}
+            handleLogout={handleLogout}
+            menuRef={menuRef}
+            currentUser={currentUser}
+          />
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-4 py-6 space-y-6">
-        {/* Balance Card */}
-        <BalanceCard 
-          balance={balance}
-          isLoading={isLoadingBalance}
-          onRefresh={refreshBalance}
-        />
-
-        {/* Account Info */}
-        <AccountInfo 
-          user={userProfile}
-          walletAddress={evmAddress}
-        />
-
-        {/* Pending Claims (if any) */}
-        <PendingClaims userId={currentUser.userId} />
-
-        {/* Quick Actions */}
-        <QuickActions />
-
-        {/* Recent Transactions */}
-        <RecentTransactions userId={currentUser.userId} />
-      </div>
+      {/* Navigation Dock */}
+      <NavigationDock />
 
       {/* Bottom spacing for mobile navigation */}
-      <div className="h-20"></div>
+      <div className="h-32 md:h-16"></div>
     </div>
   )
 }

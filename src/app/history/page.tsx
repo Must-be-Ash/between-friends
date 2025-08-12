@@ -10,6 +10,8 @@ import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { TransactionList } from '@/components/history/TransactionList'
 import { TransactionFilters } from '@/components/history/TransactionFilters'
 import { TransactionStats } from '@/components/history/TransactionStats'
+import { NavigationDock } from '@/components/navigation/NavigationDock'
+import { ArrowLeft, RefreshCw } from 'lucide-react'
 
 interface Transaction {
   _id: string
@@ -46,6 +48,12 @@ export default function HistoryPage() {
   
   const ITEMS_PER_PAGE = 20
 
+  useEffect(() => {
+    if (currentUser) {
+      fetchTransactions(true)
+    }
+  }, [currentUser, filterType, filterStatus, searchQuery])
+
   // Redirect if not signed in
   if (!isSignedIn) {
     router.push('/')
@@ -57,10 +65,6 @@ export default function HistoryPage() {
     return <LoadingScreen message="Loading user..." />
   }
 
-  useEffect(() => {
-    fetchTransactions(true)
-  }, [currentUser, filterType, filterStatus, searchQuery])
-
   const fetchTransactions = async (reset = false) => {
     if (!currentUser?.userId) return
     
@@ -69,9 +73,13 @@ export default function HistoryPage() {
     setError(null)
     
     try {
+      const currentPageForOffset = reset ? 1 : currentPage
+      const offset = (currentPageForOffset - 1) * ITEMS_PER_PAGE
+      
       const params = new URLSearchParams({
-        page: reset ? '1' : currentPage.toString(),
+        userId: currentUser.userId,
         limit: ITEMS_PER_PAGE.toString(),
+        offset: offset.toString(),
         type: filterType,
         status: filterStatus,
         ...(searchQuery && { search: searchQuery })
@@ -132,144 +140,137 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 safe-area-inset">
-        <div className="px-4 py-4">
-          <div className="flex items-center">
+    <div className="min-h-screen bg-[#222222]">
+      {/* Main Content with glassmorphism container */}
+      <div className="px-4 pt-10 pb-6">
+        <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
+          
+          {/* Back Button */}
+          <div className="flex items-center justify-between">
             <button
-              onClick={() => router.back()}
-              className="p-2 -ml-2 mr-3 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Go back"
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
             </button>
-            <div className="flex-1">
-              <h1 className="text-xl font-semibold text-gray-900">Transaction History</h1>
-              <p className="text-sm text-gray-600">
-                Your complete USDC transfer history
-              </p>
-            </div>
             <button
               onClick={handleRefresh}
               disabled={isLoading}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+              className="p-2 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
               aria-label="Refresh"
             >
-              <svg 
-                className={`w-5 h-5 text-gray-600 ${isLoading ? 'animate-spin' : ''}`} 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <RefreshCw className={`w-5 h-5 text-[#B8B8B8] ${isLoading ? 'animate-spin' : ''}`} />
             </button>
+          </div>
+
+          {/* Stats */}
+          <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-4">Overview</h3>
+            <TransactionStats stats={stats} />
+          </div>
+
+          {/* Filters */}
+          <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-4">Filters</h3>
+            <TransactionFilters
+              currentType={filterType}
+              currentStatus={filterStatus}
+              currentSearch={searchQuery}
+              onFilterChange={handleFilterChange}
+            />
+          </div>
+
+          {/* Content */}
+          <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white mb-4">Transactions</h3>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-[#4A4A4A] border-t-[#B8B8B8] rounded-full animate-spin mb-3"></div>
+                  <p className="text-white/70">Loading transactions...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Failed to Load</h3>
+                <p className="text-white/70 mb-4">{error}</p>
+                <button
+                  onClick={handleRefresh}
+                  className="px-4 py-2 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-colors border border-white/30"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="text-center py-12">
+  
+                <h3 className="text-lg font-semibold text-white mb-2">No Transactions Found</h3>
+                <p className="text-white/70 mb-6">
+                  {searchQuery || filterType !== 'all' || filterStatus !== 'all' 
+                    ? 'No transactions match your current filters.'
+                    : 'You haven\'t made any USDC transfers yet.'
+                  }
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  {(searchQuery || filterType !== 'all' || filterStatus !== 'all') && (
+                    <button
+                      onClick={() => handleFilterChange('all', 'all', '')}
+                      className="px-4 py-2 bg-white/10 text-white rounded-xl font-medium hover:bg-white/20 transition-colors border border-white/30"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                  <button
+                    onClick={() => router.push('/send')}
+                    className="px-4 py-2 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-colors border border-white/30"
+                  >
+                    Send Your First Payment
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <TransactionList 
+                  transactions={transactions}
+                  currentUserId={currentUser.userId}
+                />
+                
+                {/* Load More Button */}
+                {hasMore && (
+                  <div className="text-center pt-4">
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={isLoadingMore}
+                      className="px-6 py-3 bg-white/10 border border-white/20 rounded-xl font-medium text-white hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoadingMore ? (
+                        <div className="flex items-center justify-center">
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin text-[#B8B8B8]" />
+                          Loading...
+                        </div>
+                      ) : (
+                        'Load More Transactions'
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="px-4 py-4">
-        <TransactionStats stats={stats} />
-      </div>
-
-      {/* Filters */}
-      <div className="px-4 pb-4">
-        <TransactionFilters
-          currentType={filterType}
-          currentStatus={filterStatus}
-          currentSearch={searchQuery}
-          onFilterChange={handleFilterChange}
-        />
-      </div>
-
-      {/* Content */}
-      <div className="px-4 pb-6">
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-3"></div>
-              <p className="text-gray-600">Loading transactions...</p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="card text-center py-8">
-            <svg className="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button
-              onClick={handleRefresh}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="card text-center py-12">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Found</h3>
-            <p className="text-gray-600 mb-6">
-              {searchQuery || filterType !== 'all' || filterStatus !== 'all' 
-                ? 'No transactions match your current filters.'
-                : 'You haven\'t made any USDC transfers yet.'
-              }
-            </p>
-            {(searchQuery || filterType !== 'all' || filterStatus !== 'all') && (
-              <button
-                onClick={() => handleFilterChange('all', 'all', '')}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors mr-3"
-              >
-                Clear Filters
-              </button>
-            )}
-            <button
-              onClick={() => router.push('/send')}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
-            >
-              Send Your First Payment
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <TransactionList 
-              transactions={transactions}
-              currentUserId={currentUser.userId}
-            />
-            
-            {/* Load More Button */}
-            {hasMore && (
-              <div className="text-center pt-4">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={isLoadingMore}
-                  className="px-6 py-3 bg-white border border-gray-200 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoadingMore ? (
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Loading...
-                    </div>
-                  ) : (
-                    'Load More Transactions'
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Navigation Dock */}
+      <NavigationDock />
 
       {/* Bottom spacing for mobile navigation */}
-      <div className="h-20"></div>
+      <div className="h-32 md:h-16"></div>
     </div>
   )
 }

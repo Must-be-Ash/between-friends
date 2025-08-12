@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookupRecipient } from '@/lib/recipient-lookup'
-import { prepareUSDCTransfer, hasSufficientBalance } from '@/lib/usdc'
-import { prepareEscrowDeposit, generateTransferId, calculateExpiryDate } from '@/lib/escrow'
-import { createPendingTransfer, createTransaction, getUserByUserId } from '@/lib/models'
+import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval, USDCTransactionRequest } from '@/lib/usdc'
+import { prepareEscrowDeposit, calculateExpiryDate } from '@/lib/escrow'
+import { prepareSimpleEscrowDeposit, generateTransferId as generateSimpleTransferId } from '@/lib/simple-escrow'
+import { createPendingTransfer, getUserByUserId } from '@/lib/models'
 import { generateSecureToken } from '@/lib/utils'
+import { CONTRACT_ADDRESSES } from '@/lib/cdp'
 import { z } from 'zod'
 import { Address } from 'viem'
 
@@ -70,6 +72,15 @@ export async function POST(request: NextRequest) {
           amount
         )
         
+        // Convert BigInt values to strings for JSON serialization
+        const serializedTransaction = {
+          ...transaction,
+          value: transaction.value?.toString(),
+          gas: transaction.gas?.toString(),
+          maxFeePerGas: transaction.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
+        }
+
         return NextResponse.json({
           success: true,
           transferType: 'direct',
@@ -78,7 +89,7 @@ export async function POST(request: NextRequest) {
             displayName: recipient.displayName,
             walletAddress: recipient.walletAddress,
           },
-          transaction,
+          transaction: serializedTransaction,
           message: `Ready to send ${amount} USDC directly to ${recipient.displayName || recipient.email}`
         })
       } catch (error) {
@@ -91,18 +102,98 @@ export async function POST(request: NextRequest) {
     } else {
       // Escrow transfer for new user
       try {
-        // Generate transfer ID and claim token
-        const transferId = generateTransferId()
+        // Generate transfer ID and claim token for SimpleEscrow
+        const transferId = generateSimpleTransferId()
         const claimToken = generateSecureToken(32)
         const expiryDate = calculateExpiryDate(7) // 7 days
         
-        // Prepare escrow deposit transaction (no email data on-chain)
-        const transaction = await prepareEscrowDeposit(
+        // For SimpleEscrow, we need to check allowance for the new contract
+        // First, try to import the new escrow address
+        const { SIMPLE_ESCROW_ADDRESS } = await import('@/lib/simple-escrow')
+        
+        // Check if SimpleEscrow is deployed, otherwise fallback to old escrow
+        const useSimpleEscrow = SIMPLE_ESCROW_ADDRESS && SIMPLE_ESCROW_ADDRESS !== '0x0000000000000000000000000000000000000000'
+        const escrowAddress = useSimpleEscrow ? SIMPLE_ESCROW_ADDRESS : CONTRACT_ADDRESSES.ESCROW
+        
+        const hasAllowance = await hasSufficientAllowance(
           senderAddress as Address,
-          amount,
-          transferId,
-          7 // 7 days timeout
+          escrowAddress as Address,
+          amount
         )
+        
+        // Prepare transactions - approval first if needed, then deposit
+        const transactions: any[] = []
+        
+        if (!hasAllowance) {
+          // Prepare approval transaction for the correct escrow contract
+          const approvalTx = await prepareUSDCApproval(
+            senderAddress as Address,
+            escrowAddress as Address,
+            amount
+          )
+          // Serialize BigInt values
+          const serializedApprovalTx = {
+            ...approvalTx,
+            value: approvalTx.value.toString(),
+            gas: approvalTx.gas.toString(),
+            maxFeePerGas: approvalTx.maxFeePerGas.toString(),
+            maxPriorityFeePerGas: approvalTx.maxPriorityFeePerGas.toString(),
+            description: `Approve USDC for ${useSimpleEscrow ? 'new' : 'legacy'} escrow contract`
+          }
+          transactions.push(serializedApprovalTx)
+        }
+        
+        // Prepare escrow deposit transaction (no email data on-chain)
+        // Only prepare if we have allowance, otherwise just store the parameters
+        if (hasAllowance) {
+          let depositTx
+          
+          if (useSimpleEscrow) {
+            // Use new SimpleEscrow contract
+            depositTx = await prepareSimpleEscrowDeposit(
+              senderAddress as Address,
+              amount,
+              transferId,
+              recipientEmail, // email for claim secret generation
+              claimToken,
+              7 // 7 days timeout
+            )
+          } else {
+            // Fallback to old escrow contract
+            depositTx = await prepareEscrowDeposit(
+              senderAddress as Address,
+              amount,
+              transferId,
+              7 // 7 days timeout
+            )
+          }
+          
+          // Serialize BigInt values
+          const serializedDepositTx = {
+            ...depositTx,
+            value: depositTx.value?.toString(),
+            gas: depositTx.gas?.toString(),
+            maxFeePerGas: depositTx.maxFeePerGas?.toString(),
+            maxPriorityFeePerGas: depositTx.maxPriorityFeePerGas?.toString(),
+            description: `Deposit USDC to ${useSimpleEscrow ? 'new' : 'legacy'} escrow`
+          }
+          transactions.push(serializedDepositTx)
+        } else {
+          // Store deposit parameters for later preparation after approval
+          transactions.push({
+            type: useSimpleEscrow ? 'simple_escrow_deposit' : 'escrow_deposit',
+            parameters: {
+              senderAddress,
+              amount,
+              transferId,
+              recipientEmail,
+              claimToken,
+              timeoutDays: 7,
+              useSimpleEscrow
+            },
+            description: `Deposit USDC to ${useSimpleEscrow ? 'new' : 'legacy'} escrow`
+          })
+        }
         
         // Store pending transfer in database
         const pendingTransfer = await createPendingTransfer({
@@ -124,8 +215,9 @@ export async function POST(request: NextRequest) {
             transferId,
             expiryDate,
           },
-          transaction,
-          message: `Ready to send ${amount} USDC via escrow to ${recipient.email}. They will receive an email to claim the funds.`
+          transactions,
+          requiresApproval: !hasAllowance,
+          message: `Ready to send ${amount} USDC via escrow to ${recipient.email}. ${!hasAllowance ? 'Approval required first. ' : ''}They will receive an email to claim the funds.`
         })
       } catch (error) {
         console.error('Escrow transfer preparation error:', error)

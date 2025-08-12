@@ -1,80 +1,63 @@
 "use client";
 
 import { useRouter } from 'next/navigation'
+import { Send, Download, Users, History, ChevronRight } from 'lucide-react'
 
 export function QuickActions() {
   const router = useRouter()
 
   const actions = [
     {
-      id: 'top-up',
-      label: 'Top-up',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      ),
-      onClick: () => {
-        // TODO: Implement top-up flow (likely using Onramp APIs from CDP)
-        console.log('Top-up clicked - to be implemented in Phase 3')
-      },
-      color: 'bg-green-500 hover:bg-green-600'
-    },
-    {
       id: 'send',
       label: 'Send',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-        </svg>
-      ),
-      onClick: () => router.push('/send'),
-      color: 'bg-primary-500 hover:bg-primary-600'
+      description: 'Transfer USDC',
+      icon: <Send className="w-5 h-5 text-white" />,
+      onClick: () => router.push('/send')
     },
     {
       id: 'receive',
       label: 'Receive',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4m4-4l5 5 5-5m-5-7v12" />
-        </svg>
-      ),
-      onClick: () => router.push('/receive'),
-      color: 'bg-blue-500 hover:bg-blue-600'
+      description: 'Get USDC',
+      icon: <Download className="w-5 h-5 text-white" />,
+      onClick: () => router.push('/receive')
+    },
+    {
+      id: 'contacts',
+      label: 'Contacts',
+      description: 'Manage contacts',
+      icon: <Users className="w-5 h-5 text-white" />,
+      onClick: () => router.push('/contacts')
     },
     {
       id: 'history',
       label: 'History',
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-      ),
-      onClick: () => router.push('/history'),
-      color: 'bg-gray-500 hover:bg-gray-600'
+      description: 'View transactions',
+      icon: <History className="w-5 h-5 text-white" />,
+      onClick: () => router.push('/history')
     }
   ]
 
   return (
-    <div className="card">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+    <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl">
+      <h3 className="text-lg font-semibold text-white mb-6">Quick Actions</h3>
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-3">
         {actions.map((action) => (
           <button
             key={action.id}
             onClick={action.onClick}
-            className={`
-              ${action.color} text-white rounded-xl p-4 
-              transition-all duration-200 transform active:scale-95
-              flex flex-col items-center justify-center space-y-2
-              shadow-md hover:shadow-lg
-            `}
+            className="w-full flex items-center justify-between p-4 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 rounded-xl transition-all duration-200 group"
           >
-            <div className="p-2 bg-white/20 rounded-lg">
-              {action.icon}
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                {action.icon}
+              </div>
+              <div className="text-left">
+                <div className="text-white font-medium text-sm">{action.label}</div>
+                <div className="text-white/60 text-xs">{action.description}</div>
+              </div>
             </div>
-            <span className="font-medium text-sm">{action.label}</span>
+            <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
           </button>
         ))}
       </div>

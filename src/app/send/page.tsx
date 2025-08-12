@@ -9,12 +9,12 @@ import { useIsSignedIn, useEvmAddress, useCurrentUser } from '@coinbase/cdp-hook
 import { getUSDCBalance } from '@/lib/usdc'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { RecipientInput } from '@/components/send/RecipientInput'
-import { AmountInput } from '@/components/send/AmountInput'
-import { TransferPreview } from '@/components/send/TransferPreview'
-import { SendConfirmation } from '@/components/send/SendConfirmation'
 import { SendSuccess } from '@/components/send/SendSuccess'
+import { SendConfirmation } from '@/components/send/SendConfirmation'
+import { NavigationDock } from '@/components/navigation/NavigationDock'
+import { ArrowLeft } from 'lucide-react'
 
-type SendStep = 'input' | 'preview' | 'confirm' | 'success'
+type SendStep = 'input' | 'success'
 
 interface RecipientInfo {
   email: string
@@ -40,12 +40,23 @@ export default function SendPage() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
   const [transferData, setTransferData] = useState<TransferData | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
+  const [preSelectedContact, setPreSelectedContact] = useState<{contactEmail: string; displayName: string} | null>(null)
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false)
+  const [pendingTransferData, setPendingTransferData] = useState<TransferData | null>(null)
+  const [recipientInputStep, setRecipientInputStep] = useState<'select_contact' | 'enter_amount'>('select_contact')
 
-  // Redirect if not signed in
-  if (!isSignedIn) {
-    router.push('/')
-    return <LoadingScreen message="Redirecting..." />
-  }
+  // Check for pre-selected contact from URL params
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search)
+      const contactEmail = searchParams.get('contactEmail')
+      const displayName = searchParams.get('displayName')
+      
+      if (contactEmail && displayName) {
+        setPreSelectedContact({ contactEmail, displayName })
+      }
+    }
+  }, [])
 
   // Fetch balance on load
   useEffect(() => {
@@ -53,6 +64,12 @@ export default function SendPage() {
       fetchBalance()
     }
   }, [evmAddress])
+
+  // Redirect if not signed in
+  if (!isSignedIn) {
+    router.push('/')
+    return <LoadingScreen message="Redirecting..." />
+  }
 
   const fetchBalance = async () => {
     if (!evmAddress) return
@@ -68,24 +85,12 @@ export default function SendPage() {
     }
   }
 
-  const handleRecipientAndAmountSubmit = (recipient: RecipientInfo, amount: string) => {
-    setTransferData({ recipient, amount })
-    setCurrentStep('preview')
-  }
-
-  const handlePreviewConfirm = () => {
-    setCurrentStep('confirm')
-  }
-
-  const handleTransactionSuccess = (hash: string) => {
-    setTxHash(hash)
-    setCurrentStep('success')
-  }
 
   const handleStartOver = () => {
     setTransferData(null)
     setTxHash(null)
     setCurrentStep('input')
+    setRecipientInputStep('select_contact')
     fetchBalance() // Refresh balance
   }
 
@@ -93,88 +98,112 @@ export default function SendPage() {
     router.push('/')
   }
 
+  const handleShowConfirmation = (transferData: TransferData) => {
+    setPendingTransferData(transferData)
+    setShowConfirmationModal(true)
+  }
+
+  const handleConfirmationSuccess = (txHash: string) => {
+    setShowConfirmationModal(false)
+    if (pendingTransferData) {
+      setTxHash(txHash)
+      setTransferData(pendingTransferData)
+      setCurrentStep('success')
+      setPendingTransferData(null)
+    }
+  }
+
+  const handleConfirmationBack = () => {
+    setShowConfirmationModal(false)
+    setPendingTransferData(null)
+  }
+
+  const handleTopBackButton = () => {
+    // If user is in amount entry step, go back to contact selection
+    if (recipientInputStep === 'enter_amount') {
+      setRecipientInputStep('select_contact')
+    } else {
+      // Otherwise, go back to dashboard
+      router.push('/')
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 safe-area-inset">
-        <div className="px-4 py-4">
-          <div className="flex items-center">
+    <div className="min-h-screen bg-[#222222]">
+      {/* Main Content with glassmorphism container */}
+      <div className="px-4 pt-10 pb-6">
+        <div className="max-w-md mx-auto md:backdrop-blur-xl md:bg-[#4A4A4A]/30 md:border md:border-white/20 md:rounded-3xl md:p-6 md:shadow-2xl space-y-6">
+          
+          {/* Back Button */}
+          <div className="text-center">
             <button
-              onClick={() => {
-                if (currentStep === 'input') {
-                  router.back()
-                } else if (currentStep === 'preview') {
-                  setCurrentStep('input')
-                } else if (currentStep === 'confirm') {
-                  setCurrentStep('preview')
-                }
-              }}
-              className="p-2 -ml-2 mr-3 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Go back"
+              onClick={handleTopBackButton}
+              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors mb-8"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
             </button>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {currentStep === 'input' && 'Send Money'}
-                {currentStep === 'preview' && 'Review Transfer'}
-                {currentStep === 'confirm' && 'Confirm Transfer'}
-                {currentStep === 'success' && 'Transfer Complete'}
-              </h1>
-              {currentStep === 'input' && (
-                <p className="text-sm text-gray-600">
-                  Balance: ${balance} USDC {isLoadingBalance && '(loading...)'}
-                </p>
-              )}
-            </div>
           </div>
+
+          {currentStep === 'input' && currentUser && (
+            <RecipientInput
+              onShowConfirmation={handleShowConfirmation}
+              userBalance={balance}
+              isLoadingBalance={isLoadingBalance}
+              ownerUserId={currentUser.userId}
+              preSelectedContact={preSelectedContact}
+              currentStep={recipientInputStep}
+              onStepChange={setRecipientInputStep}
+            />
+          )}
+
+          {currentStep === 'success' && txHash && transferData && (
+            <SendSuccess
+              transferData={transferData}
+              txHash={txHash}
+              onSendAnother={handleStartOver}
+              onGoToDashboard={handleGoToDashboard}
+            />
+          )}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-6">
-        {currentStep === 'input' && (
-          <div className="space-y-6">
-            <RecipientInput
-              onSubmit={(recipient, amount) => handleRecipientAndAmountSubmit(recipient, amount)}
-              userBalance={balance}
-              isLoadingBalance={isLoadingBalance}
-            />
-          </div>
-        )}
-
-        {currentStep === 'preview' && transferData && (
-          <TransferPreview
-            transferData={transferData}
-            onConfirm={handlePreviewConfirm}
-            onBack={() => setCurrentStep('input')}
-          />
-        )}
-
-        {currentStep === 'confirm' && transferData && currentUser && evmAddress && (
-          <SendConfirmation
-            transferData={transferData}
-            currentUser={currentUser}
-            evmAddress={evmAddress}
-            onSuccess={handleTransactionSuccess}
-            onBack={() => setCurrentStep('preview')}
-          />
-        )}
-
-        {currentStep === 'success' && transferData && txHash && (
-          <SendSuccess
-            transferData={transferData}
-            txHash={txHash}
-            onSendAnother={handleStartOver}
-            onGoToDashboard={handleGoToDashboard}
-          />
-        )}
-      </div>
+      {/* Navigation Dock */}
+      <NavigationDock />
 
       {/* Bottom spacing for mobile navigation */}
-      <div className="h-20"></div>
+      <div className="h-32 md:h-16"></div>
+
+      {/* Confirmation Modal - Rendered at page level outside glassmorphism container */}
+      {showConfirmationModal && pendingTransferData && currentUser && evmAddress && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-3xl flex items-center justify-center p-4 z-50"
+          onClick={handleConfirmationBack}
+        >
+          <div 
+            className="bg-[#222222] rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={handleConfirmationBack}
+              className="absolute top-6 left-6 w-12 h-12 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <SendConfirmation
+              transferData={pendingTransferData}
+              currentUser={currentUser}
+              evmAddress={evmAddress}
+              onSuccess={handleConfirmationSuccess}
+              onBack={handleConfirmationBack}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

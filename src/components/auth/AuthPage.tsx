@@ -6,6 +6,7 @@ import { EmailInput } from './EmailInput'
 import { OTPInput } from './OTPInput'
 import { ProfileSetup } from './ProfileSetup'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
+import { TextShimmerBasic } from '@/components/ui/text-shimmer'
 
 type AuthStep = 'email' | 'otp' | 'profile'
 
@@ -74,14 +75,17 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#222222] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary-900 mb-2">Between Friends</h1>
-          <p className="text-primary-600">Your pal shouldn't rip you off.</p>
+          <h1 className="text-4xl font-bold text-[#CCCCCC] mb-2">Between Friends</h1>
+          <p className="text-[#B8B8B8]">
+            your&thinsp;
+            <span className="italic font-serif text-[#5CB0FF]">Pal</span> shouldn't be taxing you
+          </p>
         </div>
 
-        <div className="card">
+        <div className="backdrop-blur-xl bg-[#2A2A2A]/80 border border-[#4A4A4A] rounded-3xl p-8 shadow-2xl">
           {step === 'email' && (
             <EmailInput
               onSubmit={handleEmailSubmit}
@@ -108,9 +112,19 @@ export function AuthPage() {
         </div>
 
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-500">
-            Powered by Coinbase Developer Platform
-          </p>
+          <a 
+            href="https://portal.cdp.coinbase.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block hover:opacity-80 transition-opacity cursor-pointer"
+          >
+            <TextShimmerBasic 
+              className="text-sm font-medium" 
+              duration={6}
+            >
+              Powered by Coinbase Developer Platform
+            </TextShimmerBasic>
+          </a>
         </div>
       </div>
     </div>

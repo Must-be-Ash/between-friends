@@ -80,16 +80,16 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
-        <p className="text-gray-600 mb-4">
-          We sent a 6-digit code to <span className="font-medium">{email}</span>
+        <h2 className="text-xl font-semibold text-[#CCCCCC] mb-2">Check your email</h2>
+        <p className="text-[#B8B8B8] mb-4">
+          We sent a 6-digit code to <span className="font-medium text-white">{email}</span>
         </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-[#B8B8B8] mb-3">
           Verification code
         </label>
         <div className="flex space-x-3 justify-center" onPaste={handlePaste}>
@@ -106,14 +106,16 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               disabled={disabled}
-              className={`w-12 h-12 text-center text-lg font-semibold border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                error ? 'border-red-300' : 'border-gray-300'
-              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-12 h-12 text-center text-lg font-semibold rounded-xl bg-[#333333] border ${
+                error ? 'border-[#CC6666] focus:border-[#FF8888]' : 'border-[#5A5A5A] focus:border-[#7A7A7A]'
+              } text-white focus:outline-none focus:ring-0 transition-colors ${
+                disabled ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             />
           ))}
         </div>
         {error && (
-          <p className="mt-2 text-sm text-red-600 text-center">{error}</p>
+          <p className="mt-2 text-sm text-[#CC6666] text-center">{error}</p>
         )}
       </div>
 
@@ -122,34 +124,71 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
           type="button"
           onClick={onBack}
           disabled={disabled}
-          className="btn-secondary flex-1 py-4"
+          className="flex-1 py-4 px-6 border border-[#5A5A5A] rounded-xl font-medium text-[#CCCCCC] bg-[#333333] hover:bg-[#4A4A4A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
         <button
           type="submit"
           disabled={disabled || otp.join('').length !== 6}
-          className="btn-primary flex-1 py-4"
+          className={`
+            flex-1 py-4 px-6 rounded-xl font-semibold text-white
+            relative overflow-hidden transform-gpu
+            ${disabled || otp.join('').length !== 6
+              ? 'opacity-50 cursor-not-allowed' 
+              : 'cursor-pointer active:translate-y-1 active:shadow-[0_4px_16px_rgba(0,0,0,0.4)]'
+            }
+          `}
+          style={{
+            background: disabled || otp.join('').length !== 6
+              ? 'radial-gradient(circle at center, #2a2a2a 0%, #1f1f1f 40%, #151515 70%, #0a0a0a 100%)'
+              : 'radial-gradient(circle at center, #5a5a5a 0%, #4a4a4a 25%, #3a3a3a 50%, #2a2a2a 75%, #1a1a1a 90%, #0f0f0f 100%)',
+            boxShadow: disabled || otp.join('').length !== 6
+              ? '0 4px 12px rgba(0,0,0,0.2)' 
+              : '0 8px 24px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3)',
+            transition: 'all 0.15s ease-out'
+          }}
         >
-          {disabled ? (
-            <div className="flex items-center justify-center">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              Verifying...
-            </div>
-          ) : (
-            'Verify Code'
-          )}
+          {/* Inner highlight for 3D effect */}
+          <div 
+            className="absolute inset-0 rounded-xl"
+            style={{
+              background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 35%, rgba(255,255,255,0.02) 60%, transparent 80%)',
+              pointerEvents: 'none'
+            }}
+          />
+          
+          {/* Bottom inner shadow for depth */}
+          <div 
+            className="absolute inset-0 rounded-xl"
+            style={{
+              background: 'radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.08) 35%, transparent 60%)',
+              pointerEvents: 'none'
+            }}
+          />
+          
+          {/* Content */}
+          <span className="relative z-10">
+            {disabled ? (
+              <div className="flex items-center justify-center">
+                <div className="w-4 h-4 border-2 border-[#B8B8B8] border-t-transparent rounded-full animate-spin mr-2"></div>
+                Verifying...
+              </div>
+            ) : (
+              'Verify Code'
+            )}
+          </span>
         </button>
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-[#999999]">
           Didn't receive the code?{' '}
           <button
             type="button"
             onClick={onBack}
             disabled={disabled}
-            className="text-primary-600 hover:text-primary-700 font-medium"
+            className="text-[#B8B8B8] hover:text-white font-medium transition-colors"
           >
             Try a different email
           </button>

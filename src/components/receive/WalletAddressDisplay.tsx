@@ -23,7 +23,7 @@ export function WalletAddressDisplay({ address, onCreateQR }: WalletAddressDispl
     const shareData = {
       title: 'My Between Friends Wallet Address',
       text: `Send me USDC at my wallet address: ${address}`,
-      url: `${window.location.origin}/send?to=${address}`
+      url: `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/send?to=${address}`
     }
 
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {

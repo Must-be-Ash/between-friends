@@ -3,13 +3,15 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: #222222;
+  }
+  
   body {
     @apply bg-gray-50 text-gray-900;
     font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
-  html {
-    scroll-behavior: smooth;
+    background-color: #222222;
   }
 }
 
@@ -48,6 +50,11 @@
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  .dock-button {
+    background-color: #030303 !important;
+    background: #030303 !important;
   }
 }
 

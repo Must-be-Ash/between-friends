@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { copyToClipboard, formatUSDCWithSymbol } from '@/lib/utils'
+import { Copy, Check } from 'lucide-react'
+import { SendButton3D } from '@/components/ui/send-button-3d'
 
 interface SimpleReceiveProps {
   address: string
@@ -76,6 +78,11 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
     }
   }
 
+  const truncateAddress = (address: string) => {
+    if (address.length <= 20) return address
+    return `${address.slice(0, 8)}...${address.slice(-8)}`
+  }
+
   const handleShare = async () => {
     let shareText = 'Send me USDC'
     const baseUrl = typeof window !== 'undefined' 
@@ -107,83 +114,71 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-6">
-      {/* Wallet Address */}
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <h3 className="text-sm font-medium text-gray-900 mb-3">Your Wallet Address</h3>
-        
-        <div className="flex items-center space-x-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-mono text-gray-600 break-all">
-              {address}
-            </p>
-          </div>
-          <button
-            onClick={handleCopy}
-            className={`flex-shrink-0 px-3 py-2 text-xs font-medium rounded transition-colors ${
-              copied 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Page Title */}
+
 
       {/* Amount Input */}
-      <div className="bg-white rounded-lg p-4 border border-gray-200">
-        <h3 className="text-sm font-medium text-gray-900 mb-3">Request Specific Amount (Optional)</h3>
+      <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl mt-6 md:mt-0">
+        <h3 className="text-lg font-semibold text-white mb-4">Request Specific Amount</h3>
         
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-500">$</span>
+        <div className="flex items-center space-x-3 bg-white/10 rounded-xl p-4 border border-white/20">
+          <span className="text-white/70 text-lg">$</span>
           <input
             type="text"
             value={amount}
             onChange={(e) => handleAmountChange(e.target.value)}
             placeholder="0.00"
-            className="flex-1 text-lg font-medium bg-transparent border-none outline-none placeholder-gray-400"
+            className="flex-1 text-lg font-medium bg-transparent border-none outline-none placeholder-white/40 text-white"
           />
-          <span className="text-sm text-gray-500">USDC</span>
+          <span className="text-sm text-white/70">USDC</span>
         </div>
         
-        {amount && (
-          <p className="text-xs text-gray-500 mt-1">
-            QR code will request {formatUSDCWithSymbol(amount)}
-          </p>
-        )}
       </div>
 
-      {/* QR Code */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200 text-center">
+      {/* QR Code & Wallet Address */}
+      <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-2xl text-center">
+        <h3 className="text-lg font-semibold text-white mb-6">QR Code & Address</h3>
         {isGenerating ? (
-          <div className="flex justify-center py-8">
-            <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-2 border-[#4A4A4A] border-t-[#B8B8B8] rounded-full animate-spin"></div>
           </div>
         ) : (
           <>
-            <img 
-              src={qrCodeUrl} 
-              alt="Payment QR Code"
-              className="w-48 h-48 mx-auto mb-4"
-            />
-            <p className="text-sm text-gray-600">
+            <div className="bg-white rounded-2xl p-4 inline-block mb-6">
+              <img 
+                src={qrCodeUrl} 
+                alt="Payment QR Code"
+                className="w-48 h-48"
+              />
+            </div>
+            <p className="text-sm text-white/70 mb-4">
               {amount && parseFloat(amount) > 0 
                 ? `Scan to send ${formatUSDCWithSymbol(amount)}`
                 : 'Scan to send USDC'
               }
             </p>
+            
+            {/* Wallet Address - clickable to copy */}
+            <button
+              onClick={handleCopy}
+              className="w-full p-3 bg-white/10 rounded-xl border border-white/20 hover:bg-white/20 transition-colors"
+            >
+              <p className="text-sm font-mono text-white/90 mb-1">
+                {truncateAddress(address)}
+              </p>
+              <p className="text-xs text-white/60">
+                {copied ? 'Copied!' : 'Tap to copy address'}
+              </p>
+            </button>
           </>
         )}
       </div>
 
       {/* Share Button */}
-      <button
-        onClick={handleShare}
-        className="w-full py-3 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
-      >
+      <SendButton3D onClick={handleShare}>
         Share Payment Request
-      </button>
+      </SendButton3D>
     </div>
   )
 }

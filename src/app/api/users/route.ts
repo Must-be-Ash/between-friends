@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createUser, getUserByEmail, getUserByUserId, updateUser, updateUserByEmail } from '@/lib/models'
+import { createUser, getUserByEmail, getUserByUserId, updateUser, updateUserByEmail, getPendingTransfersByRecipient } from '@/lib/models'
 import { CreateUserData, UpdateUserData } from '@/types'
 import { z } from 'zod'
 
@@ -47,6 +47,19 @@ export async function POST(request: NextRequest) {
 
     const user = await createUser(userData)
     
+    // Check for pending transfers for this new user
+    const pendingTransfers = await getPendingTransfersByRecipient(validatedData.email.toLowerCase())
+    const pendingClaims = pendingTransfers
+      .filter(transfer => transfer.status === 'pending')
+      .map(transfer => ({
+        transferId: transfer.transferId,
+        amount: transfer.amount,
+        senderEmail: transfer.senderEmail,
+        expiryDate: transfer.expiryDate,
+        createdAt: transfer.createdAt,
+        claimToken: transfer.claimToken
+      }))
+    
     return NextResponse.json({
       success: true,
       user: {
@@ -56,7 +69,8 @@ export async function POST(request: NextRequest) {
         displayName: user.displayName,
         profileSetupComplete: user.profileSetupComplete,
         createdAt: user.createdAt,
-      }
+      },
+      pendingClaims: pendingClaims.length > 0 ? pendingClaims : undefined
     })
   } catch (error) {
     console.error('User creation error:', error)

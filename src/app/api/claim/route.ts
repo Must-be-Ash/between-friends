@@ -8,7 +8,6 @@ const ClaimRequestSchema = z.object({
   transferId: z.string().min(1, 'Transfer ID is required'),
   txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid transaction hash'),
   recipientEmail: z.string().email('Invalid recipient email'),
-  recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address'),
 })
 
 export async function POST(request: NextRequest) {
@@ -16,7 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Validate request
-    const { transferId, txHash, recipientEmail, recipientAddress } = ClaimRequestSchema.parse(body)
+    const { transferId, txHash, recipientEmail } = ClaimRequestSchema.parse(body)
 
     // Get transfer details before updating status
     const transfer = await getPendingTransfer(transferId)
