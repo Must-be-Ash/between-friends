@@ -159,7 +159,7 @@ export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalan
           </div>
 
           {/* Selected Recipient */}
-          <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-2xl">
+          <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-4">Sending to</h3>
             
             <div className="flex items-center gap-4">
@@ -178,7 +178,7 @@ export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalan
           </div>
 
           {/* Amount Input */}
-          <div className="bg-white/20 backdrop-blur-xl rounded-2xl p-6 border border-white/30 shadow-2xl">
+          <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl">
             <AmountInput
               amount={amount}
               onAmountChange={setAmount}
