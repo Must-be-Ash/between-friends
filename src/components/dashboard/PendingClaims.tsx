@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { formatUSDCWithSymbol, formatRelativeTime } from '@/lib/utils'
 
 interface PendingClaim {
@@ -21,11 +21,7 @@ export function PendingClaims({ userId }: PendingClaimsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchPendingClaims()
-  }, [userId])
-
-  const fetchPendingClaims = async () => {
+  const fetchPendingClaims = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     
@@ -44,7 +40,11 @@ export function PendingClaims({ userId }: PendingClaimsProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    fetchPendingClaims()
+  }, [fetchPendingClaims])
 
   const handleRefund = async (transferId: string) => {
     try {

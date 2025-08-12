@@ -2,6 +2,7 @@
 
 import { Contact } from '@/types'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 
 interface ContactAvatarProps {
   contact?: Partial<Contact> | { displayName: string; contactEmail: string; avatar?: string; firstName?: string; lastName?: string }
@@ -78,9 +79,11 @@ export function ContactAvatar({ contact, size = 'md', className }: ContactAvatar
       className
     )}>
       {contact?.avatar ? (
-        <img
+        <Image
           src={contact.avatar}
           alt={contact.displayName || 'Contact'}
+          width={100}
+          height={100}
           className="w-full h-full object-cover rounded-full"
           onError={(e) => {
             // Hide image on error and show initials

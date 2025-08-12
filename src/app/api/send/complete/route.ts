@@ -39,22 +39,19 @@ export async function POST(request: NextRequest) {
     const recipientEmail = recipient.email
     
     // Create transaction record for sender
-    const senderTransactionType = transferType === 'direct' ? 'sent_direct' : 'sent_escrow'
-    
     await createTransaction({
       userEmail: senderEmail,
-      type: senderTransactionType,
+      type: 'sent',
       recipientEmail: recipientEmail,
       amount: amount,
       txHash: txHash,
       transferId: transferId,
       status: transferType === 'direct' ? 'confirmed' : 'pending',
-      message: `Sent ${amount} USDC to ${recipient.displayName || '[EMAIL_REDACTED]'}`
     })
     
     console.log(`✅ TRANSACTION HISTORY CREATED FOR SENDER:`, {
       userEmail: '[EMAIL_REDACTED]',
-      type: senderTransactionType,
+      type: 'sent',
       recipientEmail: '[EMAIL_REDACTED]',
       amount,
       txHash,
@@ -68,17 +65,16 @@ export async function POST(request: NextRequest) {
         if (recipientUser) {
           await createTransaction({
             userEmail: recipientEmail,
-            type: 'received_direct',
+            type: 'received',
             senderEmail: senderEmail,
             amount: amount,
             txHash: txHash,
             status: 'confirmed',
-            message: `Received ${amount} USDC from ${sender.displayName || '[EMAIL_REDACTED]'}`
           })
           
           console.log(`✅ TRANSACTION HISTORY CREATED FOR RECIPIENT:`, {
             userEmail: '[EMAIL_REDACTED]',
-            type: 'received_direct',
+            type: 'received',
             senderEmail: '[EMAIL_REDACTED]',
             amount,
             txHash,
@@ -94,7 +90,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Transaction completed and recorded in history',
-      transactionType: senderTransactionType,
+      transactionType: 'sent',
       senderRecord: true,
       recipientRecord: transferType === 'direct' && recipient.exists
     })

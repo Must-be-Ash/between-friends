@@ -23,7 +23,7 @@ interface TransactionDetailProps {
   onClose: () => void
 }
 
-export function TransactionDetail({ transaction, currentUserId, isOpen, onClose }: TransactionDetailProps) {
+export function TransactionDetail({ transaction, isOpen, onClose }: TransactionDetailProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const [isRefunding, setIsRefunding] = useState(false)
 
@@ -178,7 +178,7 @@ export function TransactionDetail({ transaction, currentUserId, isOpen, onClose 
           {transaction.message && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-medium text-blue-900 mb-2">Message</h3>
-              <p className="text-blue-800 italic">"{transaction.message}"</p>
+              <p className="text-blue-800 italic">&ldquo;{transaction.message}&rdquo;</p>
             </div>
           )}
 

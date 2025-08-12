@@ -14,7 +14,7 @@ export function AuthPage() {
   const [step, setStep] = useState<AuthStep>('email')
   const [email, setEmail] = useState('')
   const [flowId, setFlowId] = useState<string | null>(null)
-  const [isNewUser, setIsNewUser] = useState(false)
+  const [, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
   const signInWithEmail = useSignInWithEmail()
@@ -81,7 +81,7 @@ export function AuthPage() {
           <h1 className="text-4xl font-bold text-[#CCCCCC] mb-2">Between Friends</h1>
           <p className="text-[#B8B8B8]">
             your&thinsp;
-            <span className="italic font-serif text-[#5CB0FF]">Pal</span> shouldn't be taxing you
+            <span className="italic font-serif text-[#5CB0FF]">Pal</span> shouldn&apos;t be taxing you
           </p>
         </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react'
-import { copyToClipboard, truncateText } from '@/lib/utils'
+import { copyToClipboard } from '@/lib/utils'
 
 interface WalletAddressDisplayProps {
   address: string

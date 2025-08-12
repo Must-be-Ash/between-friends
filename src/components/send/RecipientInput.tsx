@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react'
-import { formatUSDCWithSymbol, parseUSDCAmount } from '@/lib/utils'
+import { parseUSDCAmount } from '@/lib/utils'
 import { AmountInput } from './AmountInput'
 import { ContactSearch } from '@/components/contacts/ContactSearch'
 import { ContactAvatar } from '@/components/ui/ContactAvatar'

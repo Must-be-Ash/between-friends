@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookupRecipient } from '@/lib/recipient-lookup'
-import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval, USDCTransactionRequest } from '@/lib/usdc'
-import { prepareEscrowDeposit, calculateExpiryDate } from '@/lib/escrow'
+import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval } from '@/lib/usdc'
 import { prepareSimpleEscrowDeposit, generateTransferId as generateSimpleTransferId } from '@/lib/simple-escrow'
 import { createPendingTransfer, getUserByUserId } from '@/lib/models'
 import { generateSecureToken } from '@/lib/utils'
 import { CONTRACT_ADDRESSES } from '@/lib/cdp'
 import { z } from 'zod'
 import { Address } from 'viem'
+
+// Helper function to calculate expiry date
+function calculateExpiryDate(days: number): Date {
+  const now = new Date()
+  now.setDate(now.getDate() + days)
+  return now
+}
 
 // Validation schema
 const SendRequestSchema = z.object({
@@ -122,7 +128,7 @@ export async function POST(request: NextRequest) {
         )
         
         // Prepare transactions - approval first if needed, then deposit
-        const transactions: any[] = []
+        const transactions: Array<Record<string, unknown>> = []
         
         if (!hasAllowance) {
           // Prepare approval transaction for the correct escrow contract
@@ -159,13 +165,8 @@ export async function POST(request: NextRequest) {
               7 // 7 days timeout
             )
           } else {
-            // Fallback to old escrow contract
-            depositTx = await prepareEscrowDeposit(
-              senderAddress as Address,
-              amount,
-              transferId,
-              7 // 7 days timeout
-            )
+            // Only SimpleEscrow is supported
+            throw new Error('Simple escrow is required')
           }
           
           // Serialize BigInt values
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Store pending transfer in database
-        const pendingTransfer = await createPendingTransfer({
+        await createPendingTransfer({
           transferId,
           senderEmail,
           recipientEmail,

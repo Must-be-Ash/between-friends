@@ -125,24 +125,17 @@ export async function POST(request: NextRequest) {
       })
 
       // Update transfer status in database
-      await updatePendingTransferStatus(transferId, 'completed', txHash)
+      await updatePendingTransferStatus(transferId, 'claimed', txHash)
 
       // Record the transaction for the recipient
       await createTransaction({
-        txHash: txHash,
-        userId: claimer.userId,
-        type: 'receive',
+        userEmail: claimer.email,
+        type: 'received',
         amount: transfer.amount,
-        fromAddress: adminAccount.address, // From admin wallet
-        toAddress: claimer.walletAddress,
-        status: 'completed',
-        network: 'base-sepolia',
-        metadata: {
-          transferId,
-          originalSender: transfer.senderEmail,
-          method: 'admin_release',
-          gasFreeClaim: true
-        }
+        txHash: txHash,
+        transferId,
+        status: 'confirmed',
+        senderEmail: transfer.senderEmail,
       })
 
       return NextResponse.json({

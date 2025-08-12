@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Search, X, Plus, Smartphone } from 'lucide-react'
+import { Search, X, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Contact } from '@/types'
 import { ContactList } from './ContactList'
 import { useContacts } from '@/hooks/useContacts'
-import { useDeviceContacts } from '@/hooks/useDeviceContacts'
 
 interface ContactSearchProps {
   ownerUserId: string
@@ -14,7 +13,6 @@ interface ContactSearchProps {
   placeholder?: string
   className?: string
   allowAddNew?: boolean
-  showDeviceSync?: boolean
 }
 
 export function ContactSearch({ 
@@ -22,8 +20,7 @@ export function ContactSearch({
   onContactSelect, 
   placeholder = 'Search contacts or enter email...',
   className,
-  allowAddNew = true,
-  showDeviceSync = true
+  allowAddNew = true
 }: ContactSearchProps) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -39,15 +36,9 @@ export function ContactSearch({
     searchContacts,
     clearSearch,
     createContact,
-    toggleFavorite,
-    refreshContacts
+    toggleFavorite
   } = useContacts(ownerUserId)
 
-  const {
-    syncContacts,
-    isLoading: isSyncing,
-    permissionStatus
-  } = useDeviceContacts()
 
   // Email validation
   useEffect(() => {
@@ -111,12 +102,6 @@ export function ContactSearch({
     }
   }
 
-  const handleDeviceSync = async () => {
-    const result = await syncContacts(ownerUserId)
-    if (result.success) {
-      await refreshContacts()
-    }
-  }
 
   // Sort contacts alphabetically by display name
   const sortedContacts = [...contacts].sort((a, b) => 
@@ -164,7 +149,7 @@ export function ContactSearch({
                 <Plus className="w-6 h-6 text-white" />
               </div>
               <div className="text-left">
-                <p className="font-medium text-white">Add "{query}"</p>
+                <p className="font-medium text-white">Add &ldquo;{query}&rdquo;</p>
                 <p className="text-sm text-white/70">Add as new contact</p>
               </div>
             </button>

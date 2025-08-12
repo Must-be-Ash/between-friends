@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@coinbase/cdp-hooks'
 import { ContactList } from '@/components/contacts/ContactList'
 import { useContacts } from '@/hooks/useContacts'
+import { Contact } from '@/types'
 import { useDeviceContacts } from '@/hooks/useDeviceContacts'
 import { ArrowLeft, Smartphone, Users, Search, Star } from 'lucide-react'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
@@ -62,7 +63,7 @@ export default function ContactsPage() {
                          view === 'favorites' ? favoriteContacts : 
                          contacts
 
-  const handleContactSelect = (contact: any) => {
+  const handleContactSelect = (contact: Contact) => {
     // Navigate to send page with pre-selected contact
     const params = new URLSearchParams()
     params.set('contactEmail', contact.contactEmail)

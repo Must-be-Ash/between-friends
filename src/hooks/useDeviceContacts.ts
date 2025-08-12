@@ -3,6 +3,35 @@
 import { useState, useCallback } from 'react'
 import { DeviceContact } from '@/types'
 
+// Browser Contacts API type definitions
+interface ContactProperty {
+  value: string
+}
+
+interface ContactName {
+  given?: string[]
+  family?: string[]
+  formatted?: string
+}
+
+interface BrowserContact {
+  id?: string
+  name?: ContactName[]
+  email?: ContactProperty[]
+  tel?: ContactProperty[]
+}
+
+interface ContactsManager {
+  select(properties: string[], options?: { multiple?: boolean }): Promise<BrowserContact[]>
+}
+
+// Type assertion helper for navigator with contacts
+declare global {
+  interface Navigator {
+    contacts?: ContactsManager
+  }
+}
+
 interface UseDeviceContactsReturn {
   requestPermission: () => Promise<boolean>
   syncContacts: (ownerUserId: string) => Promise<{ success: boolean; message: string; newContactsCount?: number }>
@@ -24,7 +53,7 @@ export function useDeviceContacts(): UseDeviceContactsReturn {
       }
 
       // Request permission
-      const permission = await (navigator as any).permissions.query({ name: 'contacts' })
+      const permission = await navigator.permissions.query({ name: 'contacts' } as unknown as PermissionDescriptor)
       
       if (permission.state === 'granted') {
         setPermissionStatus('granted')
@@ -35,7 +64,7 @@ export function useDeviceContacts(): UseDeviceContactsReturn {
       } else {
         // Try to access contacts to trigger permission prompt
         try {
-          await (navigator as any).contacts.select(['name', 'email', 'tel'], { multiple: true })
+          await navigator.contacts!.select(['name', 'email', 'tel'], { multiple: true })
           setPermissionStatus('granted')
           return true
         } catch (error) {
@@ -56,12 +85,12 @@ export function useDeviceContacts(): UseDeviceContactsReturn {
     }
 
     try {
-      const contacts = await (navigator as any).contacts.select(
+      const contacts = await navigator.contacts!.select(
         ['name', 'email', 'tel'],
         { multiple: true }
       )
 
-      return contacts.map((contact: any, index: number) => ({
+      return contacts.map((contact: BrowserContact, index: number) => ({
         id: contact.id || `contact-${index}`,
         firstName: contact.name?.[0]?.given?.[0] || '',
         lastName: contact.name?.[0]?.family?.[0] || '',
@@ -69,10 +98,10 @@ export function useDeviceContacts(): UseDeviceContactsReturn {
                     [contact.name?.[0]?.given?.[0], contact.name?.[0]?.family?.[0]]
                       .filter(Boolean)
                       .join(' ') ||
-                    contact.email?.[0] ||
+                    contact.email?.[0]?.value ||
                     `Contact ${index + 1}`,
-        emails: contact.email?.map((email: any) => email.value) || [],
-        phoneNumbers: contact.tel?.map((tel: any) => tel.value) || [],
+        emails: contact.email?.map((email: ContactProperty) => email.value) || [],
+        phoneNumbers: contact.tel?.map((tel: ContactProperty) => tel.value) || [],
         avatar: undefined // Browser API doesn't typically provide avatars
       })).filter((contact: DeviceContact) => contact.emails.length > 0) // Only contacts with emails
     } catch (error) {

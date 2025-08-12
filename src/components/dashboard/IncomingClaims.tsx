@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { formatUSDCWithSymbol, formatRelativeTime } from '@/lib/utils'
 
 interface IncomingClaim {
@@ -23,11 +23,7 @@ export function IncomingClaims({ userId }: IncomingClaimsProps) {
   const [error, setError] = useState<string | null>(null)
   const [claimingId, setClaimingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchIncomingClaims()
-  }, [userId])
-
-  const fetchIncomingClaims = async () => {
+  const fetchIncomingClaims = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     
@@ -46,7 +42,11 @@ export function IncomingClaims({ userId }: IncomingClaimsProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    fetchIncomingClaims()
+  }, [fetchIncomingClaims])
 
   const handleClaim = async (transferId: string, claimToken: string) => {
     setClaimingId(transferId)
@@ -244,7 +244,7 @@ export function IncomingClaims({ userId }: IncomingClaimsProps) {
           </div>
           <div className="ml-3">
             <p className="text-sm text-green-800">
-              These transfers were sent to you and are ready to claim. Click "Claim" to receive the USDC in your wallet.
+              These transfers were sent to you and are ready to claim. Click &ldquo;Claim&rdquo; to receive the USDC in your wallet.
             </p>
           </div>
         </div>

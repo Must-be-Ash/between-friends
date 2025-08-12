@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useCurrentUser, useEvmAddress, useSignOut } from '@coinbase/cdp-hooks'
 import { getUSDCBalance } from '@/lib/usdc'
 import { BalanceCard } from './BalanceCard'
@@ -10,6 +10,24 @@ import { QuickActions } from './QuickActions'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { ClaimOnboarding } from '@/components/onboarding/ClaimOnboarding'
 
+interface UserProfile {
+  userId: string
+  email: string
+  displayName: string
+  profileSetupComplete: boolean
+  walletAddress?: string
+}
+
+interface DashboardPendingClaim {
+  transferId: string
+  amount: string
+  senderEmail: string
+  expiryDate: Date
+  createdAt: Date
+  status: string
+  claimToken: string
+}
+
 export function Dashboard() {
   const currentUser = useCurrentUser()
   const evmAddress = useEvmAddress()
@@ -17,38 +35,13 @@ export function Dashboard() {
   
   const [balance, setBalance] = useState<string>('0')
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
-  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [showLogoutMenu, setShowLogoutMenu] = useState(false)
-  const [pendingClaims, setPendingClaims] = useState<any[]>([])
+  const [pendingClaims, setPendingClaims] = useState<DashboardPendingClaim[]>([])
   const [showClaimOnboarding, setShowClaimOnboarding] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Fetch user profile and balance
-  useEffect(() => {
-    if (currentUser && evmAddress) {
-      fetchUserProfile()
-      fetchBalance()
-    }
-  }, [currentUser, evmAddress])
-
-  // Click outside to close menu
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowLogoutMenu(false)
-      }
-    }
-
-    if (showLogoutMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showLogoutMenu])
-
-  const createUserProfile = async (email: string) => {
+  const createUserProfile = useCallback(async (email: string) => {
     if (!currentUser || !evmAddress) return
 
     try {
@@ -83,9 +76,9 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error creating user profile:', error)
     }
-  }
+  }, [currentUser, evmAddress])
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     if (!currentUser) return
 
     try {
@@ -118,9 +111,9 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error fetching user profile:', error)
     }
-  }
+  }, [currentUser, evmAddress, createUserProfile])
 
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!evmAddress) return
 
     setIsLoadingBalance(true)
@@ -132,7 +125,32 @@ export function Dashboard() {
     } finally {
       setIsLoadingBalance(false)
     }
-  }
+  }, [evmAddress])
+
+  // Fetch user profile and balance
+  useEffect(() => {
+    if (currentUser && evmAddress) {
+      fetchUserProfile()
+      fetchBalance()
+    }
+  }, [currentUser, evmAddress, fetchUserProfile, fetchBalance])
+
+  // Click outside to close menu
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowLogoutMenu(false)
+      }
+    }
+
+    if (showLogoutMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showLogoutMenu])
 
   const refreshBalance = () => {
     fetchBalance()

@@ -3,7 +3,7 @@
 // Force dynamic rendering for this page to avoid SSR issues  
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsSignedIn, useCurrentUser } from '@coinbase/cdp-hooks'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
@@ -48,24 +48,7 @@ export default function HistoryPage() {
   
   const ITEMS_PER_PAGE = 20
 
-  useEffect(() => {
-    if (currentUser) {
-      fetchTransactions(true)
-    }
-  }, [currentUser, filterType, filterStatus, searchQuery])
-
-  // Redirect if not signed in
-  if (!isSignedIn) {
-    router.push('/')
-    return <LoadingScreen message="Redirecting..." />
-  }
-
-  // Wait for user to load
-  if (!currentUser) {
-    return <LoadingScreen message="Loading user..." />
-  }
-
-  const fetchTransactions = async (reset = false) => {
+  const fetchTransactions = useCallback(async (reset = false) => {
     if (!currentUser?.userId) return
     
     const loadingState = reset ? setIsLoading : setIsLoadingMore
@@ -111,6 +94,23 @@ export default function HistoryPage() {
     } finally {
       loadingState(false)
     }
+  }, [currentUser, filterType, filterStatus, searchQuery, currentPage, setIsLoading, setIsLoadingMore, setError, setTransactions, setHasMore, setCurrentPage])
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchTransactions(true)
+    }
+  }, [fetchTransactions, currentUser])
+
+  // Redirect if not signed in
+  if (!isSignedIn) {
+    router.push('/')
+    return <LoadingScreen message="Redirecting..." />
+  }
+
+  // Wait for user to load
+  if (!currentUser) {
+    return <LoadingScreen message="Loading user..." />
   }
 
   const handleLoadMore = () => {

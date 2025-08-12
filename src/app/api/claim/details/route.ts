@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPendingTransfer } from '@/lib/models'
-import { isEscrowClaimable } from '@/lib/escrow'
+import { isSimpleEscrowClaimable } from '@/lib/simple-escrow'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify on-chain status (optional - for extra safety)
-    const isClaimable = await isEscrowClaimable(transferId)
+    const isClaimable = await isSimpleEscrowClaimable(transferId)
     if (!isClaimable) {
       return NextResponse.json(
         { error: 'Transfer is no longer claimable on-chain' },

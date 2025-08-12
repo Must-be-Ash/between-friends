@@ -1,14 +1,28 @@
 "use client";
 
 import { useState } from 'react'
-import { useSendEvmTransaction } from '@coinbase/cdp-hooks'
-import { prepareEscrowClaim } from '@/lib/escrow'
 import { formatUSDCWithSymbol, formatTimeAgo } from '@/lib/utils'
 import { Address } from 'viem'
 
+interface TransferData {
+  transferId: string
+  amount: string
+  senderEmail: string
+  senderDisplayName?: string
+  recipientEmail: string
+  createdAt: string
+  expiryDate: string
+  status: string
+}
+
+interface CDPUser {
+  userId: string
+  email?: string
+}
+
 interface ClaimFlowProps {
-  transferData: any
-  currentUser: any
+  transferData: TransferData | null
+  currentUser: CDPUser | null
   evmAddress: Address | undefined
 }
 
@@ -18,17 +32,28 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
   const [txHash, setTxHash] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  const sendEvmTransaction = useSendEvmTransaction()
+  if (!transferData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="card text-center">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Transfer not found</h2>
+            <p className="text-gray-600">Unable to load transfer details.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleClaim = async () => {
-    if (!evmAddress || !currentUser) return
+    if (!evmAddress || !currentUser || !transferData) return
 
     setIsProcessing(true)
     setError('')
 
     try {
-      // Get claim signature from backend API
-      const claimResponse = await fetch('/api/claim/prepare', {
+      // Use admin release to claim funds (gas-free for user)
+      const response = await fetch('/api/admin/release', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,44 +65,13 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
         }),
       })
 
-      if (!claimResponse.ok) {
-        const errorData = await claimResponse.json()
-        throw new Error(errorData.error || 'Failed to prepare claim')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to release funds')
       }
 
-      const { deadline, signature } = await claimResponse.json()
-
-      // Prepare escrow claim transaction
-      const transaction = await prepareEscrowClaim(
-        transferData.transferId,
-        evmAddress,
-        deadline,
-        signature
-      )
-
-      // Execute transaction via CDP
-      const result = await sendEvmTransaction({
-        transaction,
-        evmAccount: evmAddress,
-        network: 'base-sepolia', // or 'base' for mainnet
-      })
-
-      setTxHash(result.transactionHash)
-
-      // Update transfer status in database
-      await fetch('/api/claim', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transferId: transferData.transferId,
-          txHash: result.transactionHash,
-          recipientEmail: currentUser.email,
-          recipientAddress: evmAddress,
-        }),
-      })
-
+      const result = await response.json()
+      setTxHash(result.txHash)
       setClaimComplete(true)
     } catch (error) {
       console.error('Claim error:', error)
@@ -151,7 +145,7 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
           {/* Transfer Details */}
           <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg p-6 mb-6">
             <div className="text-center">
-              <p className="text-primary-100 mb-1">You're receiving</p>
+              <p className="text-primary-100 mb-1">You&apos;re receiving</p>
               <p className="text-3xl font-bold mb-2">{formatUSDCWithSymbol(transferData.amount)}</p>
               <p className="text-primary-200">
                 From: {transferData.senderDisplayName || transferData.senderEmail}
@@ -195,7 +189,7 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
             {isProcessing ? (
               <div className="flex items-center justify-center">
                 <div className="w-4 h-4 border-2 border-[#B8B8B8] border-t-transparent rounded-full animate-spin mr-2"></div>
-                Claiming funds...
+                Releasing funds...
               </div>
             ) : (
               `Claim ${formatUSDCWithSymbol(transferData.amount)}`
@@ -204,7 +198,7 @@ export function ClaimFlow({ transferData, currentUser, evmAddress }: ClaimFlowPr
 
           <div className="text-center mt-4">
             <p className="text-xs text-gray-500">
-              By claiming, you acknowledge that the funds will be transferred to your wallet address shown above.
+              We&apos;ll release the funds to your wallet address shown above.
             </p>
           </div>
         </div>

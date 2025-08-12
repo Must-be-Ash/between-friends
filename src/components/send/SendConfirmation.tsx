@@ -16,9 +16,14 @@ interface TransferData {
   amount: string
 }
 
+interface CDPUser {
+  userId: string
+  email?: string
+}
+
 interface SendConfirmationProps {
   transferData: TransferData
-  currentUser: any // CDP User object
+  currentUser: CDPUser
   evmAddress: string
   onSuccess: (txHash: string) => void
   onBack: () => void
@@ -28,8 +33,8 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState<string>('')
-  const [showTransactionConfirmation, setShowTransactionConfirmation] = useState(false)
-  const [pendingTransactionData, setPendingTransactionData] = useState<any>(null)
+  // const [showTransactionConfirmation, setShowTransactionConfirmation] = useState(false)
+  // const [pendingTransactionData, setPendingTransactionData] = useState<any>(null)
   
   const { recipient, amount } = transferData
   const isDirect = recipient.transferType === 'direct'
@@ -125,16 +130,8 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
                 true // Skip gas estimation since this is after approval
               )
             } else {
-              // Prepare the legacy escrow deposit transaction
-              const { prepareEscrowDeposit } = await import('@/lib/escrow')
-              const { senderAddress, amount, transferId, timeoutDays } = tx.parameters
-              
-              depositTx = await prepareEscrowDeposit(
-                senderAddress,
-                amount,
-                transferId,
-                timeoutDays
-              )
+              // This should not happen - only SimpleEscrow is supported
+              throw new Error('Legacy escrow deposit is no longer supported')
             }
             
             console.log('🔐 CDP ESCROW DEPOSIT SIGNING:', {

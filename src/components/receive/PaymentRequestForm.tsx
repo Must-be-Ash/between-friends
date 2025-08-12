@@ -172,7 +172,7 @@ export function PaymentRequestForm({ onCreateRequest, userAddress }: PaymentRequ
             {message && (
               <div>
                 <span className="block font-medium">Message:</span>
-                <span className="text-blue-700 italic">"{message}"</span>
+                <span className="text-blue-700 italic">&ldquo;{message}&rdquo;</span>
               </div>
             )}
             <div className="pt-2 border-t border-blue-200">

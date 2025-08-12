@@ -128,7 +128,7 @@ export function TransactionFilters({
               )}
               {currentSearch && (
                 <span className="px-2 py-0.5 bg-white/20 text-white text-xs rounded-full border border-white/30">
-                  "{currentSearch}"
+                  &ldquo;{currentSearch}&rdquo;
                 </span>
               )}
             </div>

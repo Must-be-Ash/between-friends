@@ -25,7 +25,7 @@ export default function TermsOfServicePage() {
               <section>
                 <h2 className="text-xl font-semibold text-[#CCCCCC] mb-4">1. Acceptance of Terms</h2>
                 <p>
-                  By accessing and using Between Friends ("the Service"), you accept and agree to be bound by the terms and provision of this agreement.
+                  By accessing and using Between Friends (&ldquo;the Service&rdquo;), you accept and agree to be bound by the terms and provision of this agreement.
                 </p>
               </section>
 

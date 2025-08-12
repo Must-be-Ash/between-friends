@@ -183,7 +183,7 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
 
       <div className="text-center">
         <p className="text-sm text-[#999999]">
-          Didn't receive the code?{' '}
+          Didn&apos;t receive the code?{' '}
           <button
             type="button"
             onClick={onBack}

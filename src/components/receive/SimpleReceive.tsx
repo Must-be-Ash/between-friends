@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import QRCode from 'qrcode'
 import { copyToClipboard, formatUSDCWithSymbol } from '@/lib/utils'
-import { Copy, Check } from 'lucide-react'
 import { SendButton3D } from '@/components/ui/send-button-3d'
 
 interface SimpleReceiveProps {
@@ -16,19 +16,7 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // Generate QR code for wallet address on mount
-  useEffect(() => {
-    generateQRCode()
-  }, [address])
-
-  // Generate QR code when amount changes
-  useEffect(() => {
-    if (amount) {
-      generateQRCode()
-    }
-  }, [amount])
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     setIsGenerating(true)
     try {
       let qrData = address
@@ -60,7 +48,12 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [address, amount])
+
+  // Generate QR code for wallet address on mount and when amount changes
+  useEffect(() => {
+    generateQRCode()
+  }, [generateQRCode])
 
   const handleCopy = async () => {
     const success = await copyToClipboard(address)
@@ -146,9 +139,11 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
         ) : (
           <>
             <div className="bg-white rounded-2xl p-4 inline-block mb-6">
-              <img 
+              <Image 
                 src={qrCodeUrl} 
                 alt="Payment QR Code"
+                width={192}
+                height={192}
                 className="w-48 h-48"
               />
             </div>

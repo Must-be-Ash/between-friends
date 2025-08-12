@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { formatUSDCWithSymbol, formatRelativeTime } from '@/lib/utils'
 import { getBlockExplorerUrl } from '@/lib/cdp'
 
@@ -25,11 +25,7 @@ export function RecentTransactions({ userId }: RecentTransactionsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchTransactions()
-  }, [userId])
-
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     
@@ -48,7 +44,11 @@ export function RecentTransactions({ userId }: RecentTransactionsProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    fetchTransactions()
+  }, [fetchTransactions])
 
   const getTransactionIcon = (type: string, status: string) => {
     if (status === 'pending') {

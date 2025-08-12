@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react'
-import { parseUSDCAmount } from '@/lib/utils'
+// import { useState } from 'react'
+// import { parseUSDCAmount } from '@/lib/utils'
 
 interface AmountInputProps {
   amount: string
@@ -35,7 +35,6 @@ export function AmountInput({ amount, onAmountChange, userBalance, isLoadingBala
     onAmountChange(maxAmount.toFixed(2))
   }
 
-  const numAmount = parseUSDCAmount(amount)
   const numBalance = parseFloat(userBalance)
 
   // Quick amount suggestions

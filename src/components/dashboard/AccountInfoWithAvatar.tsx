@@ -3,14 +3,27 @@
 import { truncateText, copyToClipboard } from '@/lib/utils'
 import { useState } from 'react'
 
+interface UserProfile {
+  userId: string
+  email: string
+  displayName: string
+  profileSetupComplete: boolean
+  walletAddress?: string
+}
+
+interface CDPUser {
+  userId: string
+  email?: string
+}
+
 interface AccountInfoWithAvatarProps {
-  user: any
+  user: UserProfile | null
   walletAddress: string
   showLogoutMenu: boolean
   setShowLogoutMenu: (show: boolean) => void
   handleLogout: () => void
   menuRef: React.RefObject<HTMLDivElement>
-  currentUser: any
+  currentUser: CDPUser | null
 }
 
 export function AccountInfoWithAvatar({ 

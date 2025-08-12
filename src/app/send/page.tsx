@@ -3,7 +3,7 @@
 // Force dynamic rendering for this page to avoid SSR issues
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsSignedIn, useEvmAddress, useCurrentUser } from '@coinbase/cdp-hooks'
 import { getUSDCBalance } from '@/lib/usdc'
@@ -26,7 +26,7 @@ interface RecipientInfo {
 interface TransferData {
   recipient: RecipientInfo
   amount: string
-  transactionData?: any
+  transactionData?: Record<string, unknown>
 }
 
 export default function SendPage() {
@@ -58,20 +58,7 @@ export default function SendPage() {
     }
   }, [])
 
-  // Fetch balance on load
-  useEffect(() => {
-    if (evmAddress) {
-      fetchBalance()
-    }
-  }, [evmAddress])
-
-  // Redirect if not signed in
-  if (!isSignedIn) {
-    router.push('/')
-    return <LoadingScreen message="Redirecting..." />
-  }
-
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!evmAddress) return
     
     setIsLoadingBalance(true)
@@ -83,8 +70,20 @@ export default function SendPage() {
     } finally {
       setIsLoadingBalance(false)
     }
-  }
+  }, [evmAddress])
 
+  // Fetch balance on load
+  useEffect(() => {
+    if (evmAddress) {
+      fetchBalance()
+    }
+  }, [fetchBalance, evmAddress])
+
+  // Redirect if not signed in
+  if (!isSignedIn) {
+    router.push('/')
+    return <LoadingScreen message="Redirecting..." />
+  }
 
   const handleStartOver = () => {
     setTransferData(null)

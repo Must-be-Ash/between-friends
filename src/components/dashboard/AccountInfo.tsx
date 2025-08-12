@@ -4,8 +4,16 @@ import { useState } from 'react'
 import { formatAddress } from '@/lib/cdp'
 import { copyToClipboard } from '@/lib/utils'
 
+interface UserProfile {
+  userId: string
+  email: string
+  displayName: string
+  profileSetupComplete: boolean
+  walletAddress?: string
+}
+
 interface AccountInfoProps {
-  user: any
+  user: UserProfile | null
   walletAddress: string
 }
 

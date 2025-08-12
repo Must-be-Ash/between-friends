@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import QRCode from 'qrcode'
 import { formatUSDCWithSymbol, copyToClipboard } from '@/lib/utils'
 
@@ -24,11 +25,7 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
   const [copied, setCopied] = useState(false)
   const [isGenerating, setIsGenerating] = useState(true)
 
-  useEffect(() => {
-    generateQRCode()
-  }, [paymentRequest])
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     setIsGenerating(true)
     try {
       // Create payment URL - this would open the send page with pre-filled data
@@ -73,7 +70,11 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [paymentRequest])
+
+  useEffect(() => {
+    generateQRCode()
+  }, [generateQRCode])
 
   const handleCopyUrl = async () => {
     const success = await copyToClipboard(paymentUrl)
@@ -133,9 +134,11 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
           ) : (
             <>
               <div className="bg-white p-4 rounded-xl border-2 border-gray-100 inline-block mb-4">
-                <img 
+                <Image 
                   src={qrCodeUrl} 
                   alt="Payment QR Code"
+                  width={256}
+                  height={256}
                   className="w-64 h-64 mx-auto"
                 />
               </div>
@@ -147,7 +150,7 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
               {paymentRequest.message && (
                 <div className="bg-blue-50 rounded-lg p-3 mt-4">
                   <p className="text-blue-800 text-sm font-medium">Message:</p>
-                  <p className="text-blue-700 text-sm italic">"{paymentRequest.message}"</p>
+                  <p className="text-blue-700 text-sm italic">&quot;{paymentRequest.message}&quot;</p>
                 </div>
               )}
             </>

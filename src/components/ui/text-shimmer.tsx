@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, type JSX } from 'react';
+import React, { type JSX } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -8,7 +8,6 @@ interface TextShimmerProps {
   as?: React.ElementType;
   className?: string;
   duration?: number;
-  spread?: number;
 }
 
 export function TextShimmer({
@@ -16,7 +15,6 @@ export function TextShimmer({
   as: Component = 'p',
   className,
   duration = 2,
-  spread = 2,
 }: TextShimmerProps) {
   const MotionComponent = motion(Component as keyof JSX.IntrinsicElements);
 

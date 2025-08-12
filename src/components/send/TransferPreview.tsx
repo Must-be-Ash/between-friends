@@ -107,7 +107,7 @@ export function TransferPreview({ transferData, onConfirm, onBack }: TransferPre
             <div className={`text-sm mt-1 ${isDirect ? 'text-green-700' : 'text-yellow-700'}`}>
               {isDirect ? (
                 <div>
-                  <p>• Funds will be transferred instantly to {recipient.displayName || recipient.email}'s wallet</p>
+                  <p>• Funds will be transferred instantly to {recipient.displayName || recipient.email}&apos;s wallet</p>
                   <p>• Transaction will be confirmed on the blockchain immediately</p>
                   <p>• Recipient will receive the USDC in their account balance</p>
                 </div>
@@ -115,7 +115,7 @@ export function TransferPreview({ transferData, onConfirm, onBack }: TransferPre
                 <div>
                   <p>• Funds will be held securely in escrow until claimed</p>
                   <p>• {recipient.email} will receive an email with claim instructions</p>
-                  <p>• They'll create an account and claim the funds within 7 days</p>
+                  <p>• They&apos;ll create an account and claim the funds within 7 days</p>
                   <p>• If unclaimed, you can refund the transfer after 7 days</p>
                 </div>
               )}

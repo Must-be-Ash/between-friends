@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from 'next/navigation'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useIsInitialized, useIsSignedIn, useCurrentUser, useEvmAddress } from '@coinbase/cdp-hooks'
 import { AuthPage } from '@/components/auth/AuthPage'
 import { ClaimFlow } from '@/components/claim/ClaimFlow'
@@ -14,7 +14,18 @@ function ClaimPageContent() {
   const currentUser = useCurrentUser()
   const evmAddress = useEvmAddress()
   
-  const [transferData, setTransferData] = useState<any>(null)
+  interface TransferData {
+    transferId: string
+    senderEmail: string
+    senderDisplayName?: string
+    amount: string
+    status: string
+    recipientEmail: string
+    expiryDate: string
+    createdAt: string
+  }
+  
+  const [transferData, setTransferData] = useState<TransferData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -22,18 +33,7 @@ function ClaimPageContent() {
   const transferId = searchParams.get('id')
   const token = searchParams.get('token')
 
-  useEffect(() => {
-    if (!transferId || !token) {
-      setError('Invalid claim link')
-      setIsLoading(false)
-      return
-    }
-
-    // Fetch transfer details
-    fetchTransferDetails()
-  }, [transferId, token])
-
-  const fetchTransferDetails = async () => {
+  const fetchTransferDetails = useCallback(async () => {
     if (!transferId || !token) return
 
     try {
@@ -51,7 +51,18 @@ function ClaimPageContent() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [transferId, token])
+
+  useEffect(() => {
+    if (!transferId || !token) {
+      setError('Invalid claim link')
+      setIsLoading(false)
+      return
+    }
+
+    // Fetch transfer details
+    fetchTransferDetails()
+  }, [transferId, token, fetchTransferDetails])
 
   // Show loading while CDP initializes or data loads
   if (!isInitialized || isLoading) {
@@ -87,7 +98,7 @@ function ClaimPageContent() {
         <div className="p-4">
           <div className="w-full max-w-md mx-auto">
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-primary-900 mb-2">You've got money!</h1>
+              <h1 className="text-2xl font-bold text-primary-900 mb-2">You&apos;ve got money!</h1>
               <p className="text-primary-600">
                 Someone sent you USDC. Sign in to claim your funds.
               </p>

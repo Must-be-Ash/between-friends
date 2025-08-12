@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react'
-import { formatUSDCWithSymbol, formatRelativeTime } from '@/lib/utils'
+import { formatRelativeTime } from '@/lib/utils'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Button3D } from '@/components/ui/button-3d'
 
@@ -22,7 +22,7 @@ interface ClaimOnboardingProps {
   onComplete: () => void
 }
 
-export function ClaimOnboarding({ pendingClaims, userEmail, walletAddress, userId, onComplete }: ClaimOnboardingProps) {
+export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnboardingProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState('')

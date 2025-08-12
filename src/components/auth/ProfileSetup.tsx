@@ -4,8 +4,13 @@ import { useState } from 'react'
 import { useEvmAddress } from '@coinbase/cdp-hooks'
 import { getDisplayNameFromEmail } from '@/lib/utils'
 
+interface CDPUser {
+  userId: string
+  email?: string
+}
+
 interface ProfileSetupProps {
-  user: any // CDP user object
+  user: CDPUser
   email: string
   onComplete: () => void
 }
@@ -68,7 +73,7 @@ export function ProfileSetup({ user, email, onComplete }: ProfileSetupProps) {
       <div>
         <h2 className="text-xl font-semibold text-[#CCCCCC] mb-2">Welcome to Between Friends!</h2>
         <p className="text-[#B8B8B8] mb-4">
-          Your secure wallet has been created. Let's set up your profile.
+          Your secure wallet has been created. Let&apos;s set up your profile.
         </p>
       </div>
 
