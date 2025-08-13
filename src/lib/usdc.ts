@@ -168,7 +168,7 @@ export function prepareUSDCTransfer(senderAddress: string, recipientAddress: str
     to: usdcAddress,
     value: BigInt(0),
     data,
-    gas: BigInt(60000), // Reduced gas limit for USDC transfer
+    gas: BigInt(100000), // Increased gas limit for USDC transfer
     maxFeePerGas: BigInt(1000000000), // 1 gwei (reduced)
     maxPriorityFeePerGas: BigInt(500000000), // 0.5 gwei (reduced)
     chainId: chain.id,

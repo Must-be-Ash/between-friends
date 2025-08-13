@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         // Check if user has sufficient ETH for gas
         const hasETHForGas = await hasSufficientETHForGas(
           senderAddress as Address,
-          transaction.gas || BigInt(60000),
+          transaction.gas || BigInt(100000),
           transaction.maxFeePerGas || BigInt(1000000000)
         )
         
