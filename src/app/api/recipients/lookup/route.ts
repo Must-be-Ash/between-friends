@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookupRecipientServer, lookupMultipleRecipientsServer } from '@/lib/recipient-lookup'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 
 // Validation schemas
@@ -14,6 +15,15 @@ const MultipleLookupSchema = z.object({
 // POST - Lookup recipient(s)
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     
     // Check if it's single or multiple lookup

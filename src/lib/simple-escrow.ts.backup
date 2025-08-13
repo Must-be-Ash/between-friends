@@ -116,9 +116,15 @@ export function prepareSimpleEscrowDeposit(params: {
   transferId: string
   recipientEmail: string
   amount: string
-  claimToken?: string
+  claimToken: string
 }): EscrowDepositRequest {
   console.log('Preparing escrow deposit:', params)
+  console.log('🔑 Claim token for deposit:', params.claimToken)
+  
+  // Validate required parameters
+  if (!params.claimToken) {
+    throw new Error('claimToken is required for escrow deposit')
+  }
   
   // Convert transferId to bytes32
   const transferIdBytes32 = keccak256(toBytes(params.transferId))
@@ -127,7 +133,8 @@ export function prepareSimpleEscrowDeposit(params: {
   const amountWei = parseUnits(params.amount, 6)
   
   // Create claim secret hash (email + claimToken)
-  const claimSecret = `${params.recipientEmail}${params.claimToken || 'default'}`
+  const claimSecret = `${params.recipientEmail}${params.claimToken}`
+  console.log('🔑 Claim secret for deposit:', claimSecret)
   const claimSecretHash = keccak256(toBytes(claimSecret))
   
   // Default timeout: 7 days

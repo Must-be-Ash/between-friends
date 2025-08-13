@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react'
-import { useSendEvmTransaction } from '@coinbase/cdp-hooks'
+import { useSendEvmTransaction, useGetAccessToken } from '@coinbase/cdp-hooks'
 import { formatUSDCWithSymbol } from '@/lib/utils'
 import { getCDPNetworkName } from '@/lib/cdp'
 
@@ -40,6 +40,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   const { recipient, amount } = transferData
   const isDirect = recipient.transferType === 'direct'
   const { sendEvmTransaction } = useSendEvmTransaction()
+  const { getAccessToken } = useGetAccessToken()
 
   const handleConfirmSend = async () => {
     if (isProcessing || !evmAddress) return
@@ -50,10 +51,12 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
 
     try {
       // Get transaction data from API
+      const accessToken = await getAccessToken()
       const response = await fetch('/api/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           userId: currentUser.userId,
@@ -121,26 +124,26 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
           setCurrentStep(tx.description || `Transaction ${i + 1} of ${transactions.length}`)
           
           // If this is an escrow deposit that needs to be prepared after approval
-          if ((tx.type === 'escrow_deposit' || tx.type === 'simple_escrow_deposit') && tx.parameters) {
+          if ((tx.type === 'escrow_deposit' || tx.type === 'simplified_escrow_deposit') && tx.parameters) {
             let depositTx
             
-            if (tx.type === 'simple_escrow_deposit') {
-              // Prepare the new SimpleEscrow deposit transaction
-              const { prepareSimpleEscrowDeposit } = await import('@/lib/simple-escrow')
+            if (tx.type === 'simplified_escrow_deposit') {
+              // Prepare the new SimplifiedEscrow deposit transaction
+              const { prepareSimplifiedEscrowDeposit } = await import('@/lib/simplified-escrow')
               const { amount, transferId, recipientEmail } = tx.parameters
               
-              depositTx = prepareSimpleEscrowDeposit({
+              depositTx = prepareSimplifiedEscrowDeposit({
                 transferId,
                 recipientEmail,
                 amount
               })
             } else {
-              // This should not happen - only SimpleEscrow is supported
+              // This should not happen - only SimplifiedEscrow is supported
               throw new Error('Legacy escrow deposit is no longer supported')
             }
             
             console.log('🔐 CDP ESCROW DEPOSIT SIGNING:', {
-              type: tx.type === 'simple_escrow_deposit' ? 'SimpleEscrow Deposit' : 'Legacy Escrow Deposit',
+              type: tx.type === 'simplified_escrow_deposit' ? 'SimplifiedEscrow Deposit' : 'Legacy Escrow Deposit',
               transaction: depositTx,
               evmAccount: evmAddress,
               network: getCDPNetworkName(),
@@ -197,8 +200,8 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               setCurrentStep('Waiting for approval confirmation...')
               console.log('⏳ Waiting for approval transaction to be confirmed before proceeding...')
               
-              // Wait 1.4 seconds for the approval to be confirmed on-chain
-              await new Promise(resolve => setTimeout(resolve, 1400))
+              // Wait 2.5 seconds for the approval to be confirmed on-chain
+              await new Promise(resolve => setTimeout(resolve, 2500))
             }
             
             // Store the final transaction hash (deposit transaction)
@@ -210,10 +213,12 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
         
         // Update the transfer status in database
         if (finalTxHash && result.transfer?.transferId) {
+          const accessTokenForUpdate = await getAccessToken()
           await fetch('/api/send', {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessTokenForUpdate}`,
             },
             body: JSON.stringify({
               transferId: result.transfer.transferId,
@@ -234,10 +239,12 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
             amount
           })
           
+          const accessTokenForComplete = await getAccessToken()
           await fetch('/api/send/complete', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessTokenForComplete}`,
             },
             body: JSON.stringify({
               userId: currentUser.userId,

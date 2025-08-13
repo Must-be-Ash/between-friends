@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUser, getUserByEmail, getUserByUserId, updateUser, updateUserByEmail, getPendingTransfersByRecipient } from '@/lib/models'
 import { CreateUserData, UpdateUserData } from '@/types'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 
 // Validation schemas
@@ -20,10 +21,27 @@ const UpdateUserSchema = z.object({
 // POST - Create new user
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     
     // Validate request body
     const validatedData = CreateUserSchema.parse(body)
+    
+    // Ensure user can only create account for themselves
+    if (authResult.user.userId !== validatedData.userId) {
+      return NextResponse.json(
+        { error: 'You can only create an account for yourself' },
+        { status: 403 }
+      )
+    }
     
     // Check if user already exists by userId or email
     const existingUserByUserId = await getUserByUserId(validatedData.userId)
@@ -99,6 +117,15 @@ export async function POST(request: NextRequest) {
 // GET - Get user by email or userId (from query params)
 export async function GET(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const email = searchParams.get('email')
     const userId = searchParams.get('userId')
@@ -107,6 +134,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Email or userId parameter is required' },
         { status: 400 }
+      )
+    }
+
+    // Ensure user can only access their own data
+    const requestedUserId = userId || (email ? (await getUserByEmail(email.toLowerCase()))?.userId : null)
+    if (requestedUserId && authResult.user.userId !== requestedUserId) {
+      return NextResponse.json(
+        { error: 'You can only access your own user data' },
+        { status: 403 }
       )
     }
 
@@ -148,6 +184,15 @@ export async function GET(request: NextRequest) {
 // PUT - Update user
 export async function PUT(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     const { userId, email, ...updateData } = body
     
@@ -173,6 +218,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
+      )
+    }
+
+    // Ensure user can only update their own data
+    if (authResult.user.userId !== existingUser.userId) {
+      return NextResponse.json(
+        { error: 'You can only update your own user data' },
+        { status: 403 }
       )
     }
 

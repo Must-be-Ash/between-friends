@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPendingTransfer, updatePendingTransferStatus, createTransaction, getUserByUserId } from '@/lib/models'
-import { prepareSimpleEscrowAdminRelease } from '@/lib/simple-escrow'
+import { prepareSimplifiedEscrowAdminRelease } from '@/lib/simplified-escrow'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { validateCDPAuth, requireUserMatch, requireEmailMatch } from '@/lib/auth'
 import { z } from 'zod'
-import { Address, createWalletClient, http } from 'viem'
+import { Address, createWalletClient, createPublicClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia } from 'viem/chains'
 
-// Validation schema
+// Validation schema (simplified - no claim token needed)
 const AdminReleaseRequestSchema = z.object({
   transferId: z.string().min(1, 'Transfer ID is required'),
-  claimToken: z.string().min(1, 'Claim token is required'),
   userId: z.string().min(1, 'User ID is required'),
 })
 
@@ -22,9 +21,10 @@ if (!ADMIN_PRIVATE_KEY) {
 }
 
 /**
- * Admin Release API - Handles gasless claiming
+ * Simplified Admin Release API - Handles gasless claiming
  * This endpoint is called when users click "Claim" - admin wallet pays gas, user receives USDC
- * Requires CDP authentication to ensure only verified users can claim their funds
+ * Uses CDP email authentication only (no claim tokens/secrets)
+ * Security: CDP proves email ownership, admin releases funds to authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    // Validate request
-    const { transferId, claimToken, userId } = AdminReleaseRequestSchema.parse(body)
+    // Validate request (simplified - no claim token needed)
+    const { transferId, userId } = AdminReleaseRequestSchema.parse(body)
     
     // Verify the authenticated user matches the request
     if (!requireUserMatch(authResult.user.userId, userId)) {
@@ -94,13 +94,7 @@ export async function POST(request: NextRequest) {
     //   )
     // }
     
-    // Verify claim token
-    if (transfer.claimToken !== claimToken) {
-      return NextResponse.json(
-        { error: 'Invalid claim token' },
-        { status: 403 }
-      )
-    }
+    // No claim token verification needed - CDP authentication is our security layer
     
     // Check if transfer is still pending
     if (transfer.status !== 'pending') {
@@ -128,30 +122,42 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Set up admin wallet
+      // Set up admin wallet and public client for gas estimation
       const adminAccount = privateKeyToAccount(ADMIN_PRIVATE_KEY as `0x${string}`)
       const chainConfig = process.env.NODE_ENV === 'development' ? baseSepolia : base
+      
+      const publicClient = createPublicClient({
+        chain: chainConfig,
+        transport: http(),
+      })
+      
       const adminClient = createWalletClient({
         account: adminAccount,
         chain: chainConfig,
         transport: http(),
       })
 
-      // Prepare the admin release transaction
-      // Construct claimSecret as email + claimToken (same as during deposit)
-      const claimSecret = `${transfer.recipientEmail}${claimToken}`
-      const transaction = await prepareSimpleEscrowAdminRelease({
+      // Prepare the simplified admin release transaction
+      // Use email-only verification (no claim secrets needed)
+      console.log('📧 Releasing to authenticated email:', transfer.recipientEmail)
+      const transaction = await prepareSimplifiedEscrowAdminRelease({
         transferId,
-        recipientAddress: claimer.walletAddress as Address,
-        amount: transfer.amount,
-        claimSecret
+        recipientEmail: transfer.recipientEmail,
+        recipientAddress: claimer.walletAddress as Address
       })
 
       // Send transaction from admin wallet (admin pays gas!)
+      // Get current gas prices for Base network
+      const gasPrice = await publicClient.getGasPrice()
+      const feeData = await publicClient.estimateFeesPerGas()
+      
       const txHash = await adminClient.sendTransaction({
         to: transaction.to as Address,
         data: transaction.data,
         value: transaction.value,
+        gas: BigInt(200000), // Set higher gas limit for admin release
+        maxFeePerGas: feeData.maxFeePerGas ? (feeData.maxFeePerGas * BigInt(12)) / BigInt(10) : gasPrice * BigInt(2), // 1.2x or 2x
+        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ? (feeData.maxPriorityFeePerGas * BigInt(12)) / BigInt(10) : BigInt(1000000000), // 1.2x or 1 gwei
       })
 
       // Update transfer status in database
@@ -194,9 +200,9 @@ export async function POST(request: NextRequest) {
             { status: 501 }
           )
         }
-        if (error.message.includes('Invalid claim secret')) {
+        if (error.message.includes('Email mismatch')) {
           return NextResponse.json(
-            { error: 'Invalid claim credentials. This transfer may have been tampered with.' },
+            { error: 'Email verification failed. This transfer is not for your email address.' },
             { status: 403 }
           )
         }

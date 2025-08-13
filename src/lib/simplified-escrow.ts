@@ -1,0 +1,144 @@
+// Simplified escrow system using email-only verification
+// This is gas-free for users since admin releases funds based on CDP authentication
+
+import { encodeFunctionData, keccak256, toBytes, parseUnits } from 'viem'
+
+// SimplifiedEscrow contract ABI
+const SIMPLIFIED_ESCROW_ABI = [
+  {
+    name: 'deposit',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'transferId', type: 'bytes32' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'recipientEmailHash', type: 'bytes32' },
+      { name: 'timeoutDays', type: 'uint256' }
+    ],
+    outputs: []
+  },
+  {
+    name: 'adminRelease',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'transferId', type: 'bytes32' },
+      { name: 'recipientEmail', type: 'string' },
+      { name: 'recipient', type: 'address' }
+    ],
+    outputs: []
+  }
+] as const
+
+// Contract addresses
+function getSimplifiedEscrowAddress(): string {
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  
+  if (isDevelopment) {
+    // Testnet: Will be deployed separately
+    return process.env.NEXT_PUBLIC_SIMPLIFIED_ESCROW_ADDRESS || '0x0000000000000000000000000000000000000000'
+  } else {
+    // Mainnet: Will be deployed separately
+    return process.env.NEXT_PUBLIC_SIMPLIFIED_ESCROW_ADDRESS_MAINNET || '0x0000000000000000000000000000000000000000'
+  }
+}
+
+export const SIMPLIFIED_ESCROW_ADDRESS = getSimplifiedEscrowAddress()
+
+export function generateTransferId(): string {
+  return `transfer_${Date.now()}_${Math.random().toString(36).substring(2)}`
+}
+
+export interface SimplifiedEscrowDepositRequest {
+  to: `0x${string}`
+  value: bigint
+  data: `0x${string}`
+  chainId: number
+  type: "eip1559"
+}
+
+export function prepareSimplifiedEscrowDeposit(params: {
+  transferId: string
+  recipientEmail: string
+  amount: string
+}): SimplifiedEscrowDepositRequest {
+  console.log('📦 Preparing simplified escrow deposit:', params)
+  
+  // Convert transferId to bytes32
+  const transferIdBytes32 = keccak256(toBytes(params.transferId))
+  
+  // Convert amount to USDC units (6 decimals)
+  const amountWei = parseUnits(params.amount, 6)
+  
+  // Create recipient email hash for privacy
+  const recipientEmailHash = keccak256(toBytes(params.recipientEmail.toLowerCase()))
+  console.log('📧 Email hash for deposit:', recipientEmailHash)
+  
+  // Default timeout: 7 days
+  const timeoutDays = BigInt(7)
+  
+  // Encode the deposit function call
+  const data = encodeFunctionData({
+    abi: SIMPLIFIED_ESCROW_ABI,
+    functionName: 'deposit',
+    args: [transferIdBytes32, amountWei, recipientEmailHash, timeoutDays]
+  })
+  
+  console.log('✅ Simplified escrow deposit prepared')
+  
+  return {
+    to: SIMPLIFIED_ESCROW_ADDRESS as `0x${string}`,
+    value: BigInt(0),
+    data: data as `0x${string}`,
+    chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
+    type: "eip1559"
+  }
+}
+
+export async function prepareSimplifiedEscrowAdminRelease(params: {
+  transferId: string
+  recipientEmail: string
+  recipientAddress: string
+}): Promise<SimplifiedEscrowDepositRequest> {
+  console.log('🚀 Preparing simplified admin release:', params)
+  
+  // Convert transferId to bytes32
+  const transferIdBytes32 = keccak256(toBytes(params.transferId))
+  
+  // Encode the adminRelease function call
+  const data = encodeFunctionData({
+    abi: SIMPLIFIED_ESCROW_ABI,
+    functionName: 'adminRelease',
+    args: [transferIdBytes32, params.recipientEmail.toLowerCase(), params.recipientAddress as `0x${string}`]
+  })
+  
+  console.log('✅ Simplified admin release prepared')
+  
+  return {
+    to: SIMPLIFIED_ESCROW_ADDRESS as `0x${string}`,
+    value: BigInt(0),
+    data: data as `0x${string}`,
+    chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
+    type: "eip1559"
+  }
+}
+
+export async function isSimplifiedEscrowClaimable(transferId: string): Promise<{
+  claimable: boolean
+  reason?: string
+  expiryDate?: Date
+}> {
+  try {
+    // This would check the escrow contract state
+    console.log('🔍 Checking simplified escrow claimable status for:', transferId)
+    return {
+      claimable: true
+    }
+  } catch (error) {
+    console.error('Error checking if simplified escrow is claimable:', error)
+    return {
+      claimable: false,
+      reason: 'Error checking escrow status'
+    }
+  }
+}

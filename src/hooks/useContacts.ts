@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useGetAccessToken } from '@coinbase/cdp-hooks'
 import { Contact, CreateContactData } from '@/types'
 
 interface UseContactsReturn {
@@ -19,6 +20,7 @@ interface UseContactsReturn {
 }
 
 export function useContacts(ownerUserId: string | null): UseContactsReturn {
+  const { getAccessToken } = useGetAccessToken()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +41,12 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
         url.searchParams.set('query', query)
       }
 
-      const response = await fetch(url.toString())
+      const accessToken = await getAccessToken()
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -61,7 +68,7 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
       setIsLoading(false)
       setIsSearching(false)
     }
-  }, [ownerUserId])
+  }, [ownerUserId, getAccessToken])
 
   const refreshContacts = useCallback(async () => {
     await fetchContacts()
@@ -71,10 +78,12 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
     if (!ownerUserId || typeof window === 'undefined') return false
 
     try {
+      const accessToken = await getAccessToken()
       const response = await fetch('/api/contacts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           ...contactData,
@@ -96,16 +105,18 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
       setError(err instanceof Error ? err.message : 'Failed to create contact')
       return false
     }
-  }, [ownerUserId])
+  }, [ownerUserId, getAccessToken])
 
   const updateContact = useCallback(async (contactEmail: string, updateData: Partial<Contact>): Promise<boolean> => {
     if (!ownerUserId || typeof window === 'undefined') return false
 
     try {
+      const accessToken = await getAccessToken()
       const response = await fetch('/api/contacts', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           ownerUserId,
@@ -135,16 +146,18 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
       setError(err instanceof Error ? err.message : 'Failed to update contact')
       return false
     }
-  }, [ownerUserId])
+  }, [ownerUserId, getAccessToken])
 
   const deleteContact = useCallback(async (contactEmail: string): Promise<boolean> => {
     if (!ownerUserId || typeof window === 'undefined') return false
 
     try {
+      const accessToken = await getAccessToken()
       const response = await fetch('/api/contacts', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           ownerUserId,
@@ -168,16 +181,18 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
       setError(err instanceof Error ? err.message : 'Failed to delete contact')
       return false
     }
-  }, [ownerUserId])
+  }, [ownerUserId, getAccessToken])
 
   const toggleFavorite = useCallback(async (contactEmail: string): Promise<boolean> => {
     if (!ownerUserId || typeof window === 'undefined') return false
 
     try {
+      const accessToken = await getAccessToken()
       const response = await fetch('/api/contacts/favorite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           ownerUserId,
@@ -211,7 +226,7 @@ export function useContacts(ownerUserId: string | null): UseContactsReturn {
       setError(err instanceof Error ? err.message : 'Failed to toggle favorite')
       return false
     }
-  }, [ownerUserId])
+  }, [ownerUserId, getAccessToken])
 
   const searchContacts = useCallback(async (query: string) => {
     if (!query.trim() || typeof window === 'undefined') {

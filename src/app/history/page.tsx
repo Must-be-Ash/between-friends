@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useIsSignedIn, useCurrentUser } from '@coinbase/cdp-hooks'
+import { useIsSignedIn, useCurrentUser, useGetAccessToken } from '@coinbase/cdp-hooks'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { TransactionList } from '@/components/history/TransactionList'
 import { TransactionFilters } from '@/components/history/TransactionFilters'
@@ -33,6 +33,7 @@ export default function HistoryPage() {
   const router = useRouter()
   const { isSignedIn } = useIsSignedIn()
   const { currentUser } = useCurrentUser()
+  const { getAccessToken } = useGetAccessToken()
   
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -68,7 +69,12 @@ export default function HistoryPage() {
         ...(searchQuery && { search: searchQuery })
       })
       
-      const response = await fetch(`/api/transactions?${params}`)
+      const accessToken = await getAccessToken()
+      const response = await fetch(`/api/transactions?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
       
       if (!response.ok) {
         throw new Error('Failed to fetch transactions')
@@ -94,7 +100,7 @@ export default function HistoryPage() {
     } finally {
       loadingState(false)
     }
-  }, [currentUser, filterType, filterStatus, searchQuery, currentPage, setIsLoading, setIsLoadingMore, setError, setTransactions, setHasMore, setCurrentPage])
+  }, [currentUser, filterType, filterStatus, searchQuery, currentPage, setIsLoading, setIsLoadingMore, setError, setTransactions, setHasMore, setCurrentPage, getAccessToken])
 
   useEffect(() => {
     if (currentUser) {

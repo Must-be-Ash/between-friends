@@ -51,13 +51,9 @@ export const CONTRACT_ADDRESSES = {
     8453: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base Mainnet
     84532: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia
   },
-  SIMPLE_ESCROW: {
-    8453: '0x0000000000000000000000000000000000000001', // Base Mainnet - would be deployed address
-    84532: '0x0000000000000000000000000000000000000001', // Base Sepolia - would be deployed address
-  },
-  ESCROW: {
-    8453: '0x0000000000000000000000000000000000000001', // Base Mainnet - would be deployed address
-    84532: '0x0000000000000000000000000000000000000001', // Base Sepolia - would be deployed address
+  SIMPLIFIED_ESCROW: {
+    8453: '0x0000000000000000000000000000000000000000', // Base Mainnet - to be deployed
+    84532: '0x5a61Cc9206f82e2bAFD9bde1729E32E27bb737E9', // Base Sepolia - deployed
   }
 }
 

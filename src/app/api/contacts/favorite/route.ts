@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { toggleContactFavorite } from '@/lib/models'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 
 const FavoriteToggleSchema = z.object({
@@ -12,8 +13,25 @@ export const dynamic = 'force-dynamic'
 // POST - Toggle contact favorite status
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     const validatedData = FavoriteToggleSchema.parse(body)
+    
+    // Ensure user can only toggle favorites for their own contacts
+    if (authResult.user.userId !== validatedData.ownerUserId) {
+      return NextResponse.json(
+        { error: 'You can only toggle favorites for your own contacts' },
+        { status: 403 }
+      )
+    }
     
     await toggleContactFavorite(
       validatedData.ownerUserId,

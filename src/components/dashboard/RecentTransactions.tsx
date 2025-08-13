@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react'
+import { useGetAccessToken } from '@coinbase/cdp-hooks'
 import { formatUSDCWithSymbol, formatRelativeTime } from '@/lib/utils'
 import { getBlockExplorerUrl } from '@/lib/cdp'
 
@@ -21,6 +22,7 @@ interface RecentTransactionsProps {
 }
 
 export function RecentTransactions({ userId }: RecentTransactionsProps) {
+  const { getAccessToken } = useGetAccessToken()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +32,12 @@ export function RecentTransactions({ userId }: RecentTransactionsProps) {
     setError(null)
     
     try {
-      const response = await fetch(`/api/transactions?userId=${encodeURIComponent(userId)}&limit=10`)
+      const accessToken = await getAccessToken()
+      const response = await fetch(`/api/transactions?userId=${encodeURIComponent(userId)}&limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
       
       if (!response.ok) {
         throw new Error('Failed to fetch transactions')
@@ -44,7 +51,7 @@ export function RecentTransactions({ userId }: RecentTransactionsProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [userId])
+  }, [userId, getAccessToken])
 
   useEffect(() => {
     fetchTransactions()

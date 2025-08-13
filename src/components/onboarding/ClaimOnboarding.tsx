@@ -66,7 +66,6 @@ export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnbo
           },
           body: JSON.stringify({
             transferId: claim.transferId,
-            claimToken: claim.claimToken,
             userId: userId,
           }),
         })

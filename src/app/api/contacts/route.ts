@@ -8,6 +8,7 @@ import {
   bulkCreateContacts 
 } from '@/lib/models'
 import { CreateContactData } from '@/types'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 
 // Validation schemas
@@ -44,6 +45,15 @@ export const dynamic = 'force-dynamic'
 // GET - Get contacts for a user with optional search
 export async function GET(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const ownerUserId = searchParams.get('ownerUserId')
     const query = searchParams.get('query')
@@ -52,6 +62,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Owner user ID is required' },
         { status: 400 }
+      )
+    }
+
+    // Ensure user can only access their own contacts
+    if (authResult.user.userId !== ownerUserId) {
+      return NextResponse.json(
+        { error: 'You can only access your own contacts' },
+        { status: 403 }
       )
     }
 
@@ -91,11 +109,28 @@ export async function GET(request: NextRequest) {
 // POST - Create new contact or bulk create contacts
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     
     // Check if this is a bulk create operation
     if (body.contacts && Array.isArray(body.contacts)) {
       const validatedData = BulkCreateSchema.parse(body)
+      
+      // Ensure user can only create contacts for themselves
+      if (authResult.user.userId !== validatedData.ownerUserId) {
+        return NextResponse.json(
+          { error: 'You can only create contacts for yourself' },
+          { status: 403 }
+        )
+      }
       
       // Process each contact and add ownerUserId
       const contactsData = validatedData.contacts.map(contact => ({
@@ -113,6 +148,14 @@ export async function POST(request: NextRequest) {
     } else {
       // Single contact creation
       const validatedData = CreateContactSchema.parse(body)
+      
+      // Ensure user can only create contacts for themselves
+      if (authResult.user.userId !== validatedData.ownerUserId) {
+        return NextResponse.json(
+          { error: 'You can only create contacts for yourself' },
+          { status: 403 }
+        )
+      }
       
       const contactData: CreateContactData = {
         ...validatedData,
@@ -166,6 +209,15 @@ export async function POST(request: NextRequest) {
 // PUT - Update contact
 export async function PUT(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     const { ownerUserId, contactEmail, ...updateData } = body
     
@@ -173,6 +225,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: 'Owner user ID and contact email are required' },
         { status: 400 }
+      )
+    }
+    
+    // Ensure user can only update their own contacts
+    if (authResult.user.userId !== ownerUserId) {
+      return NextResponse.json(
+        { error: 'You can only update your own contacts' },
+        { status: 403 }
       )
     }
     
@@ -204,6 +264,15 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete contact
 export async function DELETE(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     const { ownerUserId, contactEmail } = body
     
@@ -211,6 +280,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { error: 'Owner user ID and contact email are required' },
         { status: 400 }
+      )
+    }
+    
+    // Ensure user can only delete their own contacts
+    if (authResult.user.userId !== ownerUserId) {
+      return NextResponse.json(
+        { error: 'You can only delete your own contacts' },
+        { status: 403 }
       )
     }
     

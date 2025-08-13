@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookupRecipientServer } from '@/lib/recipient-lookup'
 import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval, hasSufficientETHForGas, getCurrentGasPrice } from '@/lib/usdc'
-import { prepareSimpleEscrowDeposit, generateTransferId as generateSimpleTransferId } from '@/lib/simple-escrow'
+import { generateTransferId as generateSimpleTransferId } from '@/lib/simplified-escrow'
 import { createPendingTransfer, getUserByUserId } from '@/lib/models'
-import { generateSecureToken } from '@/lib/utils'
 import { calculateExpiryDate } from '@/lib/cdp'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 import { Address } from 'viem'
 
@@ -38,10 +38,27 @@ const SendRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     
     // Validate request
     const { userId, senderAddress, recipientEmail, amount } = SendRequestSchema.parse(body)
+    
+    // Ensure user can only send from their own account
+    if (authResult.user.userId !== userId) {
+      return NextResponse.json(
+        { error: 'You can only send funds from your own account' },
+        { status: 403 }
+      )
+    }
     
     // Get sender's email from userId
     const sender = await getUserByUserId(userId)
@@ -151,14 +168,13 @@ export async function POST(request: NextRequest) {
     } else {
       // Escrow transfer for new user
       try {
-        // Generate transfer ID and claim token for SimpleEscrow
+        // Generate transfer ID for SimplifiedEscrow (no claim token needed)
         const transferId = generateSimpleTransferId()
-        const claimToken = generateSecureToken()
         const expiryDate = calculateExpiryDate(7) // 7 days
         
-        // Import SimpleEscrow contract address
-        const { SIMPLE_ESCROW_ADDRESS } = await import('@/lib/simple-escrow')
-        const escrowAddress = SIMPLE_ESCROW_ADDRESS
+        // Import SimplifiedEscrow contract address
+        const { SIMPLIFIED_ESCROW_ADDRESS } = await import('@/lib/simplified-escrow')
+        const escrowAddress = SIMPLIFIED_ESCROW_ADDRESS
         
         const hasAllowance = await hasSufficientAllowance(
           senderAddress as Address,
@@ -180,46 +196,45 @@ export async function POST(request: NextRequest) {
           const serializedApprovalTx = {
             ...approvalTx,
             value: approvalTx.value.toString(),
-            description: `Approve USDC for SimpleEscrow contract`
+            description: `Approve USDC for SimplifiedEscrow contract`
           }
           transactions.push(serializedApprovalTx)
         }
         
-        // Prepare escrow deposit transaction (no email data on-chain)
+        // Prepare escrow deposit transaction (email hash only, no secrets)
         // Only prepare if we have allowance, otherwise just store the parameters
         if (hasAllowance) {
-          // Use SimpleEscrow contract
-          const depositTx = prepareSimpleEscrowDeposit({
+          // Use SimplifiedEscrow contract
+          const { prepareSimplifiedEscrowDeposit } = await import('@/lib/simplified-escrow')
+          const depositTx = prepareSimplifiedEscrowDeposit({
             transferId,
             recipientEmail,
-            amount,
-            claimToken
+            amount
           })
           
           // Serialize BigInt values
           const serializedDepositTx = {
             ...depositTx,
             value: depositTx.value?.toString() || '0',
-            description: `Deposit USDC to SimpleEscrow`
+            description: `Deposit USDC to SimplifiedEscrow`
           }
           transactions.push(serializedDepositTx)
         } else {
           // Store deposit parameters for later preparation after approval
           transactions.push({
-            type: 'simple_escrow_deposit',
+            type: 'simplified_escrow_deposit',
             parameters: {
               senderAddress,
               amount,
               transferId,
               recipientEmail,
-              claimToken,
               timeoutDays: 7
             },
-            description: `Deposit USDC to SimpleEscrow`
+            description: `Deposit USDC to SimplifiedEscrow`
           })
         }
         
-        // Store pending transfer in database
+        // Store pending transfer in database (no claimToken needed)
         await createPendingTransfer({
           transferId,
           senderUserId: userId,
@@ -228,7 +243,6 @@ export async function POST(request: NextRequest) {
           amount,
           status: 'pending',
           type: 'escrow',
-          claimToken,
           expiryDate,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -281,6 +295,15 @@ export async function POST(request: NextRequest) {
 // POST - Confirm transaction (after user signs)
 export async function PUT(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     const { transferId, txHash, transferType } = body
     

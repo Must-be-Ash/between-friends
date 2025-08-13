@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTransactionsByUserWithFilters, getUserByUserId } from '@/lib/models'
+import { validateCDPAuth } from '@/lib/auth'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get('userId')
     const limitParam = searchParams.get('limit')
@@ -18,6 +28,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'userId parameter is required' },
         { status: 400 }
+      )
+    }
+
+    // Ensure user can only access their own transaction history
+    if (authResult.user.userId !== userId) {
+      return NextResponse.json(
+        { error: 'You can only access your own transaction history' },
+        { status: 403 }
       )
     }
 

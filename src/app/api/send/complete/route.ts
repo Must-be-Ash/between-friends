@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createTransaction, getUserByUserId, getUserByEmail, getPendingTransfer } from '@/lib/models'
 import { sendClaimNotificationEmail, sendDirectTransferNotificationEmail } from '@/lib/email'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 
 // Force dynamic rendering for this API route
@@ -22,10 +23,27 @@ const CompleteTransferSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     
     // Validate request
     const { userId, txHash, transferType, recipient, amount, transferId } = CompleteTransferSchema.parse(body)
+    
+    // Ensure user can only complete their own transactions
+    if (authResult.user.userId !== userId) {
+      return NextResponse.json(
+        { error: 'You can only complete your own transactions' },
+        { status: 403 }
+      )
+    }
     
     // Get sender's information
     const sender = await getUserByUserId(userId)
@@ -120,19 +138,19 @@ export async function POST(request: NextRequest) {
     // Send email notification for escrow transfers
     if (transferType === 'escrow' && transferId) {
       try {
-        // Get the transfer details to get claim token
+        // Get the transfer details
         const pendingTransfer = await getPendingTransfer(transferId)
-        if (pendingTransfer && pendingTransfer.claimToken) {
-          // Generate claim URL
+        if (pendingTransfer) {
+          // Generate simplified claim URL (no token needed - CDP auth handles security)
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.btwnfriends.com'
-          const claimUrl = `${baseUrl}/claim?transferId=${transferId}&token=${pendingTransfer.claimToken}`
+          const claimUrl = `${baseUrl}/claim?transferId=${transferId}`
           
           console.log('📧 SENDING ESCROW NOTIFICATION EMAIL:', {
             recipientEmail,
             senderEmail,
             amount,
             transferId,
-            claimUrl: claimUrl.replace(pendingTransfer.claimToken, '[TOKEN_REDACTED]')
+            claimUrl
           })
           
           // Send email notification

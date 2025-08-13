@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react'
+import { useGetAccessToken } from '@coinbase/cdp-hooks'
 import { parseUSDCAmount } from '@/lib/utils'
 import { AmountInput } from './AmountInput'
 import { ContactSearch } from '@/components/contacts/ContactSearch'
@@ -38,6 +39,7 @@ interface RecipientInputProps {
 type Step = 'select_contact' | 'enter_amount'
 
 export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalance, ownerUserId, preSelectedContact, currentStep, onStepChange }: RecipientInputProps) {
+  const { getAccessToken } = useGetAccessToken()
   const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null)
   const [amount, setAmount] = useState('')
   const [recipient, setRecipient] = useState<RecipientInfo | null>(null)
@@ -76,10 +78,12 @@ export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalan
     setIsLookingUp(true)
 
     try {
+      const accessToken = await getAccessToken()
       const response = await fetch(`/api/recipients/lookup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ email: contact.contactEmail }),
       })

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useCurrentUser, useEvmAddress, useSignOut } from '@coinbase/cdp-hooks'
+import { useCurrentUser, useEvmAddress, useSignOut, useGetAccessToken } from '@coinbase/cdp-hooks'
 import { getUSDCBalance } from '@/lib/usdc'
 import { BalanceCard } from './BalanceCard'
 import { AccountInfoWithAvatar } from '@/components/dashboard/AccountInfoWithAvatar'
@@ -32,6 +32,7 @@ export function Dashboard() {
   const { currentUser } = useCurrentUser()
   const { evmAddress } = useEvmAddress()
   const { signOut } = useSignOut()
+  const { getAccessToken } = useGetAccessToken()
   
   const [balance, setBalance] = useState<string>('0')
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)
@@ -45,10 +46,12 @@ export function Dashboard() {
     if (!currentUser || !evmAddress) return
 
     try {
+      const accessToken = await getAccessToken()
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           userId: currentUser.userId,
@@ -76,14 +79,19 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error creating user profile:', error)
     }
-  }, [currentUser, evmAddress])
+  }, [currentUser, evmAddress, getAccessToken])
 
   const fetchUserProfile = useCallback(async () => {
     if (!currentUser) return
 
     try {
+      const accessToken = await getAccessToken()
       // Use userId instead of email to fetch user profile
-      const response = await fetch(`/api/users?userId=${encodeURIComponent(currentUser.userId)}`)
+      const response = await fetch(`/api/users?userId=${encodeURIComponent(currentUser.userId)}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
       if (response.ok) {
         const { user } = await response.json()
         setUserProfile(user)
@@ -111,7 +119,7 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error fetching user profile:', error)
     }
-  }, [currentUser, evmAddress, createUserProfile])
+  }, [currentUser, evmAddress, createUserProfile, getAccessToken])
 
   const fetchBalance = useCallback(async () => {
     if (!evmAddress) return

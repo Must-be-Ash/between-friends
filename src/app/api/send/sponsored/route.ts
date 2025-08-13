@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createTransaction, getUserByUserId } from '@/lib/models'
+import { validateCDPAuth } from '@/lib/auth'
 import { z } from 'zod'
 
 // This route handles gas-sponsored USDC transfers
@@ -16,6 +17,15 @@ const SponsoredSendSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     const body = await request.json()
     
     // Validate request
@@ -27,6 +37,14 @@ export async function POST(request: NextRequest) {
       amount, 
       userSignature 
     } = SponsoredSendSchema.parse(body)
+    
+    // Ensure user can only send from their own account
+    if (authResult.user.userId !== userId) {
+      return NextResponse.json(
+        { error: 'You can only send funds from your own account' },
+        { status: 403 }
+      )
+    }
     
     // Get sender's information
     const sender = await getUserByUserId(userId)
