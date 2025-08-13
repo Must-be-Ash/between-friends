@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useSendEvmTransaction } from '@coinbase/cdp-hooks'
 import { formatUSDCWithSymbol } from '@/lib/utils'
+import { getCDPNetworkName } from '@/lib/cdp'
 
 interface RecipientInfo {
   email: string
@@ -109,14 +110,14 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
           type: 'Direct Transfer',
           transaction: transaction,
           evmAccount: evmAddress,
-          network: 'base-sepolia',
+          network: getCDPNetworkName(),
           timestamp: new Date().toISOString()
         })
         
         const txResult = await sendEvmTransaction({
           transaction,
           evmAccount: evmAddress as `0x${string}`,
-          network: 'base-sepolia',
+          network: getCDPNetworkName(),
         })
         
         console.log('✅ CDP TRANSACTION RESULT:', {
@@ -156,7 +157,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               type: tx.type === 'simple_escrow_deposit' ? 'SimpleEscrow Deposit' : 'Legacy Escrow Deposit',
               transaction: depositTx,
               evmAccount: evmAddress,
-              network: 'base-sepolia',
+              network: getCDPNetworkName(),
               step: `${i + 1}/${transactions.length}`,
               timestamp: new Date().toISOString()
             })
@@ -164,7 +165,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
             const txResult = await sendEvmTransaction({
               transaction: depositTx,
               evmAccount: evmAddress as `0x${string}`,
-              network: 'base-sepolia',
+              network: getCDPNetworkName(),
             })
             
             console.log('✅ CDP ESCROW DEPOSIT RESULT:', {
@@ -187,7 +188,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               type: 'USDC Approval',
               transaction: transaction,
               evmAccount: evmAddress,
-              network: 'base-sepolia',
+              network: getCDPNetworkName(),
               step: `${i + 1}/${transactions.length}`,
               description: tx.description,
               timestamp: new Date().toISOString()
@@ -196,7 +197,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
             const txResult = await sendEvmTransaction({
               transaction,
               evmAccount: evmAddress as `0x${string}`,
-              network: 'base-sepolia',
+              network: getCDPNetworkName(),
             })
             
             console.log('✅ CDP APPROVAL RESULT:', {

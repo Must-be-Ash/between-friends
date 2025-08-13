@@ -13,7 +13,7 @@ const usdcAddress = isDevelopment ? USDC_BASE_SEPOLIA : USDC_BASE_MAINNET
 // Create public client
 const publicClient = createPublicClient({
   chain,
-  transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://sepolia.base.org')
+  transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || (isDevelopment ? 'https://sepolia.base.org' : 'https://mainnet.base.org'))
 })
 
 // USDC has 6 decimals

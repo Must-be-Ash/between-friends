@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { CDPProvider } from '@/components/providers/CDPProvider'
 import { Analytics } from '@vercel/analytics/react'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { NetworkStatus } from '@/components/pwa/NetworkStatus'
+import { UpdateNotification } from '@/components/pwa/UpdateNotification'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -96,6 +99,9 @@ export default function RootLayout({
           <div className="min-h-screen safe-area-inset">
             {children}
           </div>
+          <NetworkStatus />
+          <InstallPrompt />
+          <UpdateNotification />
         </CDPProvider>
         <Analytics />
       </body>

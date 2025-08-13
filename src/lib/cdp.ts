@@ -9,16 +9,17 @@ export interface CDPConfig {
 
 export function getCDPConfig(): CDPConfig {
   const projectId = process.env.NEXT_PUBLIC_CDP_PROJECT_ID
-  const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || (isDevelopment ? 'https://sepolia.base.org' : 'https://mainnet.base.org')
   
-  if (!projectId || !rpcUrl) {
-    throw new Error('Missing CDP configuration. Please check your environment variables.')
+  if (!projectId) {
+    throw new Error('Missing CDP_PROJECT_ID configuration. Please check your environment variables.')
   }
   
   return {
     projectId,
     rpcUrl,
-    chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453 // Base Sepolia : Base Mainnet
+    chainId: isDevelopment ? 84532 : 8453 // Base Sepolia : Base Mainnet
   }
 }
 
@@ -176,4 +177,17 @@ export function getBlockExplorerUrl(txHash: string, chainId?: number): string {
   const networkId = chainId || CURRENT_NETWORK
   const baseUrl = getExplorerUrl(networkId)
   return `${baseUrl}/tx/${txHash}`
+}
+
+// Get the network name for CDP transactions
+export function getCDPNetworkName(chainId?: number): 'base' | 'base-sepolia' {
+  const networkId = chainId || CURRENT_NETWORK
+  switch (networkId) {
+    case 8453:
+      return 'base'
+    case 84532:
+      return 'base-sepolia'
+    default:
+      return process.env.NODE_ENV === 'development' ? 'base-sepolia' : 'base'
+  }
 }

@@ -56,10 +56,31 @@ export async function refundEscrowTransfer(params: {
   }
 }
 
-// Contract addresses
-export const SIMPLE_ESCROW_ADDRESS = process.env.NODE_ENV === 'development' 
-  ? '0x0000000000000000000000000000000000000001' // Sepolia testnet address placeholder
-  : '0x0000000000000000000000000000000000000001' // Base mainnet address placeholder
+// Contract addresses - use network-specific environment variables when available
+function getSimpleEscrowAddress(): string {
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  
+  // Check for network-specific environment variables first
+  if (isDevelopment && process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_SEPOLIA) {
+    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_SEPOLIA
+  }
+  
+  if (!isDevelopment && process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_MAINNET) {
+    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_MAINNET
+  }
+  
+  // Fallback to legacy single address
+  if (process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS) {
+    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS
+  }
+  
+  // Final fallback to placeholder addresses
+  return isDevelopment 
+    ? '0x0000000000000000000000000000000000000001' // Sepolia testnet address placeholder
+    : '0x0000000000000000000000000000000000000001' // Base mainnet address placeholder
+}
+
+export const SIMPLE_ESCROW_ADDRESS = getSimpleEscrowAddress()
 
 export function generateTransferId(): string {
   return `transfer_${Date.now()}_${Math.random().toString(36).substring(2)}`

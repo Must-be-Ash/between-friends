@@ -4,7 +4,7 @@ import { prepareSimpleEscrowAdminRelease } from '@/lib/simple-escrow'
 import { z } from 'zod'
 import { Address, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { baseSepolia } from 'viem/chains'
+import { base, baseSepolia } from 'viem/chains'
 
 // Validation schema
 const AdminReleaseRequestSchema = z.object({
@@ -99,9 +99,10 @@ export async function POST(request: NextRequest) {
     try {
       // Set up admin wallet
       const adminAccount = privateKeyToAccount(ADMIN_PRIVATE_KEY as `0x${string}`)
+      const chainConfig = process.env.NODE_ENV === 'development' ? baseSepolia : base
       const adminClient = createWalletClient({
         account: adminAccount,
-        chain: baseSepolia,
+        chain: chainConfig,
         transport: http(),
       })
 
@@ -211,7 +212,7 @@ export async function GET() {
     return NextResponse.json({
       configured: true,
       address: adminAccount.address,
-      network: 'base-sepolia',
+      network: process.env.NODE_ENV === 'development' ? 'base-sepolia' : 'base',
       // balance: '...' // Would require a read call
     })
     
