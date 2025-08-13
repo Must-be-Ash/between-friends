@@ -85,28 +85,17 @@ export async function refundEscrowTransfer(params: {
   }
 }
 
-// Contract addresses - use network-specific environment variables when available
+// Contract addresses - only SimpleEscrow contracts
 function getSimpleEscrowAddress(): string {
   const isDevelopment = process.env.NODE_ENV === 'development'
   
-  // Check for network-specific environment variables first
-  if (isDevelopment && process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_SEPOLIA) {
-    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_SEPOLIA
+  if (isDevelopment) {
+    // Testnet: Use NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS
+    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS || '0x81b3504d839F1344d402eb60EB6bfc2E2B8DD7D7'
+  } else {
+    // Mainnet: Use NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_MAINNET
+    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_MAINNET || '0xFE652f8DD0a20CC5Ef0287B8827924A0F6bc06dF'
   }
-  
-  if (!isDevelopment && process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_MAINNET) {
-    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS_MAINNET
-  }
-  
-  // Fallback to legacy single address
-  if (process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS) {
-    return process.env.NEXT_PUBLIC_SIMPLE_ESCROW_ADDRESS
-  }
-  
-  // Final fallback to placeholder addresses
-  return isDevelopment 
-    ? '0x0000000000000000000000000000000000000001' // Sepolia testnet address placeholder
-    : '0x0000000000000000000000000000000000000001' // Base mainnet address placeholder
 }
 
 export const SIMPLE_ESCROW_ADDRESS = getSimpleEscrowAddress()

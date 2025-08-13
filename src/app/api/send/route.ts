@@ -4,7 +4,7 @@ import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prep
 import { prepareSimpleEscrowDeposit, generateTransferId as generateSimpleTransferId } from '@/lib/simple-escrow'
 import { createPendingTransfer, getUserByUserId } from '@/lib/models'
 import { generateSecureToken } from '@/lib/utils'
-import { CONTRACT_ADDRESSES, CURRENT_NETWORK, calculateExpiryDate } from '@/lib/cdp'
+import { calculateExpiryDate } from '@/lib/cdp'
 import { z } from 'zod'
 import { Address } from 'viem'
 
@@ -156,13 +156,9 @@ export async function POST(request: NextRequest) {
         const claimToken = generateSecureToken()
         const expiryDate = calculateExpiryDate(7) // 7 days
         
-        // For SimpleEscrow, we need to check allowance for the new contract
-        // First, try to import the new escrow address
+        // Import SimpleEscrow contract address
         const { SIMPLE_ESCROW_ADDRESS } = await import('@/lib/simple-escrow')
-        
-        // Check if SimpleEscrow is deployed, otherwise fallback to old escrow
-        const useSimpleEscrow = SIMPLE_ESCROW_ADDRESS && SIMPLE_ESCROW_ADDRESS !== '0x0000000000000000000000000000000000000001'
-        const escrowAddress = useSimpleEscrow ? SIMPLE_ESCROW_ADDRESS : CONTRACT_ADDRESSES.ESCROW[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.ESCROW]
+        const escrowAddress = SIMPLE_ESCROW_ADDRESS
         
         const hasAllowance = await hasSufficientAllowance(
           senderAddress as Address,
@@ -184,7 +180,7 @@ export async function POST(request: NextRequest) {
           const serializedApprovalTx = {
             ...approvalTx,
             value: approvalTx.value.toString(),
-            description: `Approve USDC for ${useSimpleEscrow ? 'new' : 'legacy'} escrow contract`
+            description: `Approve USDC for SimpleEscrow contract`
           }
           transactions.push(serializedApprovalTx)
         }
@@ -192,42 +188,34 @@ export async function POST(request: NextRequest) {
         // Prepare escrow deposit transaction (no email data on-chain)
         // Only prepare if we have allowance, otherwise just store the parameters
         if (hasAllowance) {
-          let depositTx
-          
-          if (useSimpleEscrow) {
-            // Use new SimpleEscrow contract
-            depositTx = prepareSimpleEscrowDeposit({
-              transferId,
-              recipientEmail,
-              amount,
-              claimToken
-            })
-          } else {
-            // Only SimpleEscrow is supported
-            throw new Error('Simple escrow is required')
-          }
+          // Use SimpleEscrow contract
+          const depositTx = prepareSimpleEscrowDeposit({
+            transferId,
+            recipientEmail,
+            amount,
+            claimToken
+          })
           
           // Serialize BigInt values
           const serializedDepositTx = {
             ...depositTx,
             value: depositTx.value?.toString() || '0',
-            description: `Deposit USDC to ${useSimpleEscrow ? 'new' : 'legacy'} escrow`
+            description: `Deposit USDC to SimpleEscrow`
           }
           transactions.push(serializedDepositTx)
         } else {
           // Store deposit parameters for later preparation after approval
           transactions.push({
-            type: useSimpleEscrow ? 'simple_escrow_deposit' : 'escrow_deposit',
+            type: 'simple_escrow_deposit',
             parameters: {
               senderAddress,
               amount,
               transferId,
               recipientEmail,
               claimToken,
-              timeoutDays: 7,
-              useSimpleEscrow
+              timeoutDays: 7
             },
-            description: `Deposit USDC to ${useSimpleEscrow ? 'new' : 'legacy'} escrow`
+            description: `Deposit USDC to SimpleEscrow`
           })
         }
         
