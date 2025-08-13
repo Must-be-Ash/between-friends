@@ -92,7 +92,7 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
         <label className="block text-sm font-medium text-[#B8B8B8] mb-3">
           Verification code
         </label>
-        <div className="flex space-x-3 justify-center" onPaste={handlePaste}>
+        <div className="flex space-x-2 justify-center px-4" onPaste={handlePaste}>
           {otp.map((digit, index) => (
             <input
               key={index}
@@ -106,7 +106,7 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
               onChange={(e) => handleChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
               disabled={disabled}
-              className={`w-12 h-12 text-center text-lg font-semibold rounded-xl bg-[#333333] border ${
+              className={`w-11 h-11 text-center text-lg font-semibold rounded-xl bg-[#333333] border ${
                 error ? 'border-[#CC6666] focus:border-[#FF8888]' : 'border-[#5A5A5A] focus:border-[#7A7A7A]'
               } text-white focus:outline-none focus:ring-0 transition-colors ${
                 disabled ? 'opacity-50 cursor-not-allowed' : ''
@@ -119,20 +119,12 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
         )}
       </div>
 
-      <div className="flex space-x-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={disabled}
-          className="flex-1 py-4 px-6 border border-[#5A5A5A] rounded-xl font-medium text-[#CCCCCC] bg-[#333333] hover:bg-[#4A4A4A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Back
-        </button>
+      <div className="space-y-3">
         <button
           type="submit"
           disabled={disabled || otp.join('').length !== 6}
           className={`
-            flex-1 py-4 px-6 rounded-xl font-semibold text-white
+            w-full py-4 px-6 rounded-xl font-semibold text-white
             relative overflow-hidden transform-gpu
             ${disabled || otp.join('').length !== 6
               ? 'opacity-50 cursor-not-allowed' 
@@ -175,9 +167,18 @@ export function OTPInput({ email, onSubmit, onBack, disabled }: OTPInputProps) {
                 Verifying...
               </div>
             ) : (
-              'Verify Code'
+              'Verify'
             )}
           </span>
+        </button>
+        
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={disabled}
+          className="w-full py-4 px-6 border border-[#5A5A5A] rounded-xl font-medium text-[#CCCCCC] bg-[#333333] hover:bg-[#4A4A4A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Back
         </button>
       </div>
 

@@ -115,16 +115,16 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
       <div className="bg-[#3B3B3B] rounded-2xl p-6 border border-white/30 shadow-2xl mt-6 md:mt-0">
         <h3 className="text-lg font-semibold text-white mb-4">Request Specific Amount</h3>
         
-        <div className="flex items-center space-x-3 bg-white/10 rounded-xl p-4 border border-white/20">
-          <span className="text-white/70 text-lg">$</span>
+        <div className="flex items-center space-x-2 bg-white/10 rounded-xl p-4 pr-6 border border-white/20">
+          <span className="text-white/70 text-lg flex-shrink-0">$</span>
           <input
             type="text"
             value={amount}
             onChange={(e) => handleAmountChange(e.target.value)}
             placeholder="0.00"
-            className="flex-1 text-lg font-medium bg-transparent border-none outline-none placeholder-white/40 text-white"
+            className="flex-1 min-w-0 text-lg font-medium bg-transparent border-none outline-none placeholder-white/40 text-white"
           />
-          <span className="text-sm text-white/70">USDC</span>
+          <span className="text-sm text-white/70 flex-shrink-0">USDC</span>
         </div>
         
       </div>
