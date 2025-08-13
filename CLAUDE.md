@@ -2,136 +2,296 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Plan & Review
+## Development Commands
 
-### Before starting work
-- Always in plan mode to make a plan
-- After get the plan, make sure you Write the plan to •claude/tasks/TASK_NAME. md.
-- The plan should be a detailed implementation plan and the reasoning behind them, as well as tasks broken down.
-- If the task require external knowledge or certain package, also research to get latest knowledge (Use Task tool for research)
-- Don't over plan it, always think MVP. Do not include future work, budget or buisness related things like week 1, week 2... .
-- Once you write the plan, firstly ask me to review it. Do not continue until I approve the plan.
-### While implementing
-- You should update the plan as you work.
-- After you complete tasks in the plan, you should update and append detailed descriptions of the changes you made, so following tasks can be easily hand over to other engineers.
+### Common Development Tasks
+```bash
+# Start development server
+npm run dev
 
-## Rule Updates:
-- **Add New Rules When:**
-- A new technology/pattern is used in 3+ files
-- Common bugs could be prevented by a rule
-- Code reviews repeatedly mention the same feedback
-- New security or performance patterns emerge
-- **Modify Existing Rules When:**
-- Better examples exist in the codebase
-- Additional edge cases are discovered
-- Related rules have been updated
-- Implementation details have changed
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Run linting
+npm run lint
+
+# Type checking
+npm run type-check
+```
+
+### Smart Contract Development (Foundry)
+```bash
+# Build contracts
+forge build
+
+# Run contract tests
+forge test
+
+# Deploy to Base Sepolia testnet
+forge script script/DeploySimpleEscrow.s.sol --rpc-url base_sepolia --broadcast
+
+# Deploy to Base mainnet
+forge script script/DeploySimpleEscrowMainnet.s.sol --rpc-url base --broadcast
+```
 
 ## Repository Overview
 
-This repository contains documentation and planning materials for Coinbase Developer Platform (CDP) integration, specifically focused on:
+This is "Between Friends" - a Next.js web application for email-based USDC transfers on Base. The app uses Coinbase Developer Platform (CDP) Embedded Wallets and implements a conditional escrow system for unknown recipients.
 
-- **Embedded Wallets Documentation**: Comprehensive guides for integrating CDP embedded wallets
-- **Onramp APIs Documentation**: API references for fiat-to-crypto purchase flows
-- **Between Friends Project Planning**: PRD and architectural planning for a USDC transfer application
+## Architecture
 
-## Repository Structure
+### Core Structure
+- **Frontend**: Next.js 14 with App Router, TypeScript, Tailwind CSS
+- **Backend**: Next.js API routes with MongoDB for data persistence
+- **Blockchain**: Smart contracts on Base (mainnet/testnet) using Foundry
+- **Wallet Integration**: CDP Embedded Wallets for gasless, email-based authentication
+- **PWA**: Progressive Web App with offline support and install prompts
 
-### Documentation Directories
+### Key Technologies
+- **CDP Embedded Wallets**: `@coinbase/cdp-react`, `@coinbase/cdp-hooks`, `@coinbase/cdp-core`
+- **Blockchain**: Viem for Ethereum interactions, USDC ERC-20 token
+- **Email**: Resend for transactional emails
+- **Database**: MongoDB with Zod schemas
+- **UI**: Framer Motion animations, Lucide React icons
+- **PWA**: next-pwa with Workbox caching strategies
 
-- `embedded-docs/`: CDP embedded wallet documentation
-  - `overview.md` - Key benefits, security, and use cases
-  - `quickstart.md` - 5-minute integration guide with React
-  - `react-components.md` - Pre-built UI components
-  - `react-hooks.md` - Authentication and transaction hooks
-  - `wagmi.md` - Wagmi library integration
-  - `cors-configuration.md` - Security configuration
+## Environment Configuration
 
-- `onramp-docs/`: Onramp API documentation  
-  - `onramp-overview.md` - Countries, payment methods, rate limits
-  - `generating-quotes.md` - Price quotation API
-  - `apple-pay-onramp-api.md` - Apple Pay integration
-  - `session-token-authentication.md` - Secure widget initialization
-  - `transaction-status.md` - Real-time status tracking
-  - `payment-methods.md` - Supported payment options
-  - `countries-&-currencies.md` - Geographic availability
-
-### Project Planning Files
-
-- `prd.md` - Technical PRD for email-based USDC transfers with escrow
-- `project-breakdown.md` - Detailed architecture and implementation plan
-- `CLAUDE.md` - This guidance file
-
-## Key Technologies Covered
-
-### CDP Embedded Wallets
-- **Authentication**: Email OTP, Google, Apple sign-in (no seed phrases)
-- **Security**: Trusted Execution Environment (TEE), user-custodied
-- **Networks**: Base mainnet (8453), Base Sepolia testnet (84532)
-- **Integration**: `@coinbase/cdp-react`, `@coinbase/cdp-hooks` packages
-
-### Onramp APIs
-- **Payment Methods**: Debit cards, bank accounts, Apple Pay
-- **Geography**: US focus with guest checkout ($500/week limit)
-- **Rate Limits**: 10 requests/second per endpoint
-- **Authentication**: Session tokens for secure widget initialization
-
-## Development Patterns from Documentation
-
-### Required Environment Setup
+### Required Environment Variables
 ```bash
-# CDP Configuration
+# CDP Configuration (required)
 NEXT_PUBLIC_CDP_PROJECT_ID=your-project-id
-NEXT_PUBLIC_BASE_RPC_URL=https://sepolia.base.org
+NEXT_PUBLIC_BASE_RPC_URL=https://sepolia.base.org  # or https://mainnet.base.org
+
+# Database
+MONGODB_URI=your-mongodb-connection-string
+
+# Email Service
+RESEND_API_KEY=your-resend-api-key
+
+# Admin Configuration
+ADMIN_WALLET_PRIVATE_KEY=your-admin-private-key
+JWT_SECRET=your-jwt-secret
 ```
 
-### Essential React Integration
-- All CDP components require `"use client"` directive (Next.js App Router)
-- Wrap app with `CDPReactProvider` using project ID
-- Configure CORS allowlist in CDP Portal before testing
-- Use Node.js 20 or 22 (Node.js 21 not supported)
+### Network Configuration
+- **Development**: Base Sepolia testnet (chainId: 84532)
+- **Production**: Base mainnet (chainId: 8453)
+- Network auto-detection based on `NODE_ENV`
 
-### Common Hook Patterns
+## Smart Contracts
+
+### SimpleEscrow.sol
+Core escrow contract for email-based transfers:
+- **Deposit**: Users deposit USDC with a hashed secret (email + token)
+- **Admin Release**: Admin wallet releases funds to verified recipients (gasless for recipients)
+- **Refund**: Senders can reclaim funds after timeout
+- **Security**: Uses OpenZeppelin's ReentrancyGuard and Ownable
+
+### Contract Addresses
+Update `src/lib/cdp.ts` with deployed contract addresses:
+```typescript
+export const CONTRACT_ADDRESSES = {
+  USDC: {
+    8453: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // Base Mainnet
+    84532: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // Base Sepolia
+  },
+  SIMPLE_ESCROW: {
+    8453: 'YOUR_MAINNET_ADDRESS',
+    84532: 'YOUR_TESTNET_ADDRESS',
+  }
+}
+```
+
+## Application Flow
+
+### Transfer Types
+1. **Known Recipients**: Direct USDC transfer to existing user's wallet
+2. **Unknown Recipients**: Escrow-based transfer with email claim link
+
+### User Authentication
+- CDP Embedded Wallets with email OTP (no seed phrases)
+- Automatic wallet creation on first sign-in
+- Persistent authentication state across sessions
+
+### Key Components
+- **CDPProvider**: Wraps app with CDP React context
+- **Dashboard**: Main user interface with balance, actions, transactions
+- **SendFlow**: Multi-step transfer process with recipient lookup
+- **ClaimFlow**: Recipient claiming process for escrow transfers
+- **PWA Components**: Install prompts, network status, update notifications
+
+## Development Patterns
+
+### Component Structure
 ```tsx
-// Authentication state
-const isInitialized = useIsInitialized();
-const isSignedIn = useIsSignedIn();
-const evmAddress = useEvmAddress();
+"use client"; // Required for CDP components
 
-// Transaction handling  
-const sendEvmTransaction = useSendEvmTransaction();
+export function MyComponent() {
+  const isSignedIn = useIsSignedIn();
+  const evmAddress = useEvmAddress();
+  // Component logic
+}
 ```
 
-### Transaction Configuration
-- Use EIP-1559 transaction type for Base network
-- Gas estimation handled automatically by CDP
-- Base Sepolia testnet for development (chainId: 84532)
-- Production on Base mainnet (chainId: 8453)
+### Transaction Handling
+```typescript
+// Use CDP hooks for transactions
+const sendEvmTransaction = useSendEvmTransaction();
 
-## Security Guidelines
+// Prepare EIP-1559 transactions for Base
+const transaction: TransactionRequest = {
+  to: '0x...',
+  value: BigInt(0),
+  data: '0x...',
+  type: "eip1559"
+};
+```
 
-### CDP Integration Security
-- Project IDs should be in environment variables, not hardcoded
-- CORS configuration must be set up in CDP Portal
-- Session tokens are managed automatically by CDP
-- Private keys never exposed - handled by TEE infrastructure
+### API Route Patterns
+```typescript
+// src/app/api/*/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/lib/db';
 
-### Network-Specific Considerations
-- `useSendEvmTransaction()` limited to Base and Base Sepolia
-- `useSignEvmTransaction()` supports any EVM network
-- Base Sepolia faucet available at portal.cdp.coinbase.com/products/faucet
+export async function POST(request: NextRequest) {
+  await connectDB();
+  // API logic
+  return NextResponse.json({ success: true });
+}
+```
 
-## Documentation Maintenance
+## Database Models
 
-This repository contains only documentation files (markdown). There are no:
-- Build commands or scripts
-- Test suites to run
-- Dependencies to install
-- Linting or formatting commands
+### User Model
+```typescript
+interface User {
+  email: string;
+  evmAddress: string;
+  displayName?: string;
+  createdAt: Date;
+  lastActive: Date;
+}
+```
 
-When working with this repository:
-1. Edit documentation files directly
-2. Ensure markdown syntax is clean and readable  
-3. Maintain consistent structure across similar doc types
-4. Update cross-references when moving or renaming files
-5. Keep technical details current with CDP API changes
+### Transfer Model
+```typescript
+interface Transfer {
+  transferId: string;
+  senderEmail: string;
+  recipientEmail: string;
+  amount: string;
+  status: 'pending' | 'claimed' | 'refunded';
+  claimToken?: string;
+  expiryDate: Date;
+  transactionHash?: string;
+}
+```
+
+## Security Considerations
+
+### Smart Contract Security
+- All contracts use OpenZeppelin battle-tested libraries
+- ReentrancyGuard prevents reentrancy attacks
+- Ownable pattern for admin functions
+- Emergency withdrawal function for stuck funds
+
+### Application Security
+- Input validation with Zod schemas
+- JWT tokens for API authentication
+- Rate limiting on sensitive endpoints
+- CORS configuration in CDP Portal
+- Security headers in next.config.js
+
+### Private Key Management
+- Admin private key stored securely (environment variable)
+- CDP handles user private keys in TEE
+- No private keys exposed in frontend code
+
+## Testing
+
+### Smart Contract Tests
+```bash
+# Run all contract tests
+forge test
+
+# Run specific test file
+forge test --match-path test/SimpleEscrow.t.sol
+
+# Run with verbose output
+forge test -vvv
+```
+
+### Test Structure
+- Unit tests in `test/` directory
+- Integration tests for full escrow flow
+- Test contracts extend `forge-std/Test.sol`
+
+## Deployment
+
+### Smart Contract Deployment
+1. Update `foundry.toml` with correct RPC endpoints
+2. Set environment variables for private keys
+3. Deploy using forge scripts in `script/` directory
+4. Update contract addresses in `src/lib/cdp.ts`
+
+### Application Deployment
+1. Set all required environment variables
+2. Build application: `npm run build`
+3. Deploy to hosting provider (Vercel recommended)
+4. Configure domain and SSL
+5. Test CDP CORS configuration
+
+## PWA Features
+
+### Caching Strategy
+- Static assets cached with `CacheFirst`
+- API responses cached with `NetworkFirst`
+- Google Fonts cached for performance
+- Runtime caching configured in `next.config.js`
+
+### Offline Support
+- Service worker handles offline scenarios
+- Cached data available when network unavailable
+- Network status indicator for users
+- Update notifications for new versions
+
+## File Organization
+
+### Source Structure
+```
+src/
+├── app/                 # Next.js App Router pages and API routes
+├── components/          # React components organized by feature
+├── contracts/           # Solidity smart contracts
+├── hooks/              # Custom React hooks
+├── lib/                # Utility libraries and configurations
+└── types/              # TypeScript type definitions
+```
+
+### Key Files
+- `src/lib/cdp.ts`: CDP configuration and utilities
+- `src/lib/db.ts`: MongoDB connection and models
+- `src/lib/email.ts`: Email service integration
+- `src/components/providers/CDPProvider.tsx`: CDP React provider
+- `next.config.js`: Next.js and PWA configuration
+
+## Common Issues
+
+### CDP Integration
+- Ensure `"use client"` directive on all CDP components
+- Verify CORS allowlist in CDP Portal matches your domain
+- Use supported Node.js versions (20 or 22, not 21)
+
+### Smart Contract Deployment
+- Verify RPC URL and chain ID match target network
+- Ensure sufficient ETH balance for deployment gas
+- Update contract addresses after deployment
+
+### PWA Installation
+- Manifest file must be accessible at `/manifest.json`
+- Icons must be available in `/public` directory
+- HTTPS required for PWA features in production
