@@ -61,13 +61,8 @@ export interface USDCTransactionRequest {
   to: string
   value: bigint
   data: string
-  gasLimit?: bigint
-  gasPrice?: bigint
-  gas?: bigint
-  maxFeePerGas?: bigint
-  maxPriorityFeePerGas?: bigint
-  chainId?: number
-  type?: "eip1559" | "legacy"
+  chainId: number
+  type: "eip1559"
 }
 
 export async function getCurrentGasPrice(): Promise<bigint> {
@@ -168,9 +163,6 @@ export function prepareUSDCTransfer(senderAddress: string, recipientAddress: str
     to: usdcAddress,
     value: BigInt(0),
     data,
-    gas: BigInt(100000), // Increased gas limit for USDC transfer
-    maxFeePerGas: BigInt(1000000000), // 1 gwei (reduced)
-    maxPriorityFeePerGas: BigInt(500000000), // 0.5 gwei (reduced)
     chainId: chain.id,
     type: "eip1559"
   }
@@ -184,9 +176,6 @@ export function prepareUSDCApproval(senderAddress: string, spender: string, amou
     to: usdcAddress,
     value: BigInt(0),
     data,
-    gas: BigInt(80000),
-    maxFeePerGas: BigInt(2000000000), // 2 gwei
-    maxPriorityFeePerGas: BigInt(1000000000), // 1 gwei
     chainId: chain.id,
     type: "eip1559"
   }

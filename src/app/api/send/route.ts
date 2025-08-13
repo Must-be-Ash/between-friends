@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { lookupRecipientServer } from '@/lib/recipient-lookup'
-import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval, hasSufficientETHForGas } from '@/lib/usdc'
+import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prepareUSDCApproval, hasSufficientETHForGas, getCurrentGasPrice } from '@/lib/usdc'
 import { prepareSimpleEscrowDeposit, generateTransferId as generateSimpleTransferId } from '@/lib/simple-escrow'
 import { createPendingTransfer, getUserByUserId } from '@/lib/models'
 import { generateSecureToken } from '@/lib/utils'
@@ -98,11 +98,12 @@ export async function POST(request: NextRequest) {
           amount
         )
         
-        // Check if user has sufficient ETH for gas
+        // Check if user has sufficient ETH for gas (using dynamic gas price)
+        const currentGasPrice = await getCurrentGasPrice()
         const hasETHForGas = await hasSufficientETHForGas(
           senderAddress as Address,
-          transaction.gas || BigInt(100000),
-          transaction.maxFeePerGas || BigInt(1000000000)
+          BigInt(100000), // Estimated gas limit for USDC transfer
+          currentGasPrice // Use current network gas price
         )
         
         // Convert BigInt values to strings for JSON serialization
@@ -110,26 +111,15 @@ export async function POST(request: NextRequest) {
           to: transaction.to,
           value: transaction.value?.toString() || '0',
           data: transaction.data,
-          gas: transaction.gas?.toString(),
-          maxFeePerGas: transaction.maxFeePerGas?.toString(),
-          maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
           chainId: transaction.chainId,
           type: transaction.type || 'eip1559',
           gasSponsored: !hasETHForGas // Flag to indicate if gas is sponsored
-        }
-        
-        // Only include gasLimit if it exists
-        if (transaction.gasLimit) {
-          serializedTransaction.gasLimit = transaction.gasLimit.toString()
         }
         
         console.log('🔍 DIRECT TRANSFER TRANSACTION:', {
           original: {
             to: transaction.to,
             value: transaction.value?.toString(),
-            gas: transaction.gas?.toString(),
-            maxFeePerGas: transaction.maxFeePerGas?.toString(),
-            maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString(),
             type: transaction.type
           },
           serialized: serializedTransaction
@@ -194,9 +184,6 @@ export async function POST(request: NextRequest) {
           const serializedApprovalTx = {
             ...approvalTx,
             value: approvalTx.value.toString(),
-            gas: approvalTx.gas?.toString(),
-            maxFeePerGas: approvalTx.maxFeePerGas?.toString(),
-            maxPriorityFeePerGas: approvalTx.maxPriorityFeePerGas?.toString(),
             description: `Approve USDC for ${useSimpleEscrow ? 'new' : 'legacy'} escrow contract`
           }
           transactions.push(serializedApprovalTx)
@@ -223,10 +210,6 @@ export async function POST(request: NextRequest) {
           const serializedDepositTx = {
             ...depositTx,
             value: depositTx.value?.toString() || '0',
-            gas: depositTx.gas?.toString(),
-            gasLimit: depositTx.gasLimit?.toString(),
-            maxFeePerGas: depositTx.maxFeePerGas?.toString(),
-            maxPriorityFeePerGas: depositTx.maxPriorityFeePerGas?.toString(),
             description: `Deposit USDC to ${useSimpleEscrow ? 'new' : 'legacy'} escrow`
           }
           transactions.push(serializedDepositTx)

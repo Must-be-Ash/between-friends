@@ -90,10 +90,6 @@ export interface EscrowDepositRequest {
   to: `0x${string}`
   value: bigint
   data: `0x${string}`
-  gasLimit?: bigint
-  gas?: bigint
-  maxFeePerGas?: bigint
-  maxPriorityFeePerGas?: bigint
   chainId: number
   type: "eip1559"
 }
@@ -109,7 +105,6 @@ export function prepareSimpleEscrowDeposit(params: {
     to: SIMPLE_ESCROW_ADDRESS as `0x${string}`,
     value: BigInt(0),
     data: '0x00', // Would contain encoded function call
-    gasLimit: BigInt(200000),
     chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
     type: "eip1559"
   }
@@ -126,7 +121,6 @@ export async function prepareSimpleEscrowAdminRelease(params: {
     to: SIMPLE_ESCROW_ADDRESS as `0x${string}`,
     value: BigInt(0),
     data: '0x00', // Would contain encoded function call
-    gasLimit: BigInt(150000),
     chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
     type: "eip1559"
   }

@@ -118,9 +118,6 @@ export async function POST(request: NextRequest) {
         to: transaction.to as Address,
         data: transaction.data,
         value: transaction.value,
-        gas: transaction.gas,
-        maxFeePerGas: transaction.maxFeePerGas,
-        maxPriorityFeePerGas: transaction.maxPriorityFeePerGas,
       })
 
       // Update transfer status in database
