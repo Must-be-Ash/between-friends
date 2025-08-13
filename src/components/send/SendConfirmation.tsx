@@ -40,9 +40,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   const { recipient, amount } = transferData
   const isDirect = recipient.transferType === 'direct'
   const sendEvmTransaction = useSendEvmTransaction()
-  
-  // CDP Paymaster URL for gas sponsorship on direct USDC transfers
-  const paymasterUrl = process.env.NEXT_PUBLIC_CDP_PAYMASTER_URL
 
   const handleConfirmSend = async () => {
     if (isProcessing) return
@@ -100,7 +97,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
           transaction: transaction,
           evmAccount: evmAddress,
           network: getCDPNetworkName(),
-          paymasterUrl: paymasterUrl,
           timestamp: new Date().toISOString()
         })
         
@@ -108,7 +104,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
           transaction,
           evmAccount: evmAddress as `0x${string}`,
           network: getCDPNetworkName(),
-          ...(paymasterUrl && { paymasterUrl })
         })
         
         console.log('✅ CDP TRANSACTION RESULT:', {
@@ -149,7 +144,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               transaction: depositTx,
               evmAccount: evmAddress,
               network: getCDPNetworkName(),
-              paymasterUrl: paymasterUrl,
               step: `${i + 1}/${transactions.length}`,
               timestamp: new Date().toISOString()
             })
@@ -158,7 +152,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               transaction: depositTx,
               evmAccount: evmAddress as `0x${string}`,
               network: getCDPNetworkName(),
-              ...(paymasterUrl && { paymasterUrl })
             })
             
             console.log('✅ CDP ESCROW DEPOSIT RESULT:', {
@@ -182,7 +175,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               transaction: transaction,
               evmAccount: evmAddress,
               network: getCDPNetworkName(),
-              paymasterUrl: paymasterUrl,
               step: `${i + 1}/${transactions.length}`,
               description: tx.description,
               timestamp: new Date().toISOString()
@@ -192,7 +184,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               transaction,
               evmAccount: evmAddress as `0x${string}`,
               network: getCDPNetworkName(),
-              ...(paymasterUrl && { paymasterUrl })
             })
             
             console.log('✅ CDP APPROVAL RESULT:', {
