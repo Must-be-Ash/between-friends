@@ -107,10 +107,13 @@ export async function POST(request: NextRequest) {
       })
 
       // Prepare the admin release transaction
+      // Construct claimSecret as email + claimToken (same as during deposit)
+      const claimSecret = `${transfer.recipientEmail}${claimToken}`
       const transaction = await prepareSimpleEscrowAdminRelease({
         transferId,
         recipientAddress: claimer.walletAddress as Address,
-        amount: transfer.amount
+        amount: transfer.amount,
+        claimSecret
       })
 
       // Send transaction from admin wallet (admin pays gas!)

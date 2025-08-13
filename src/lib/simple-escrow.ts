@@ -1,6 +1,35 @@
 // Simple escrow system using admin-release pattern
 // This is gas-free for users since admin releases funds
 
+import { encodeFunctionData, keccak256, toBytes, parseUnits } from 'viem'
+
+// SimpleEscrow contract ABI - only the functions we need
+const SIMPLE_ESCROW_ABI = [
+  {
+    name: 'deposit',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'transferId', type: 'bytes32' },
+      { name: 'amount', type: 'uint256' },
+      { name: 'claimSecretHash', type: 'bytes32' },
+      { name: 'timeoutDays', type: 'uint256' }
+    ],
+    outputs: []
+  },
+  {
+    name: 'adminRelease',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'transferId', type: 'bytes32' },
+      { name: 'claimSecret', type: 'string' },
+      { name: 'recipient', type: 'address' }
+    ],
+    outputs: []
+  }
+] as const
+
 export interface EscrowTransfer {
   transferId: string
   senderAddress: string
@@ -98,13 +127,34 @@ export function prepareSimpleEscrowDeposit(params: {
   transferId: string
   recipientEmail: string
   amount: string
+  claimToken?: string
 }): EscrowDepositRequest {
-  // This would encode the deposit function call
   console.log('Preparing escrow deposit:', params)
+  
+  // Convert transferId to bytes32
+  const transferIdBytes32 = keccak256(toBytes(params.transferId))
+  
+  // Convert amount to USDC units (6 decimals)
+  const amountWei = parseUnits(params.amount, 6)
+  
+  // Create claim secret hash (email + claimToken)
+  const claimSecret = `${params.recipientEmail}${params.claimToken || 'default'}`
+  const claimSecretHash = keccak256(toBytes(claimSecret))
+  
+  // Default timeout: 7 days
+  const timeoutDays = BigInt(7)
+  
+  // Encode the deposit function call
+  const data = encodeFunctionData({
+    abi: SIMPLE_ESCROW_ABI,
+    functionName: 'deposit',
+    args: [transferIdBytes32, amountWei, claimSecretHash, timeoutDays]
+  })
+  
   return {
     to: SIMPLE_ESCROW_ADDRESS as `0x${string}`,
     value: BigInt(0),
-    data: '0x00', // Would contain encoded function call
+    data: data as `0x${string}`,
     chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
     type: "eip1559"
   }
@@ -114,13 +164,24 @@ export async function prepareSimpleEscrowAdminRelease(params: {
   transferId: string
   recipientAddress: string
   amount: string
+  claimSecret: string
 }): Promise<EscrowDepositRequest> {
-  // This would encode the admin release function call
   console.log('Preparing admin release:', params)
+  
+  // Convert transferId to bytes32
+  const transferIdBytes32 = keccak256(toBytes(params.transferId))
+  
+  // Encode the adminRelease function call
+  const data = encodeFunctionData({
+    abi: SIMPLE_ESCROW_ABI,
+    functionName: 'adminRelease',
+    args: [transferIdBytes32, params.claimSecret, params.recipientAddress as `0x${string}`]
+  })
+  
   return {
     to: SIMPLE_ESCROW_ADDRESS as `0x${string}`,
     value: BigInt(0),
-    data: '0x00', // Would contain encoded function call
+    data: data as `0x${string}`,
     chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
     type: "eip1559"
   }

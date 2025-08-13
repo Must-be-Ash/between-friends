@@ -199,7 +199,8 @@ export async function POST(request: NextRequest) {
             depositTx = prepareSimpleEscrowDeposit({
               transferId,
               recipientEmail,
-              amount
+              amount,
+              claimToken
             })
           } else {
             // Only SimpleEscrow is supported
