@@ -17,32 +17,59 @@ export function generateClaimEmail(params: {
   message?: string
 }): EmailTemplate {
   const { senderEmail, amount, claimUrl, message } = params
+  const senderName = senderEmail.split('@')[0]
   
-  const subject = `You've received $${amount} USDC from ${senderEmail}`
+  const subject = `${senderName} sent you $${amount}`
   
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>You've received $${amount} USDC!</h2>
-      <p><strong>${senderEmail}</strong> has sent you <strong>$${amount} USDC</strong> using Between Friends.</p>
-      ${message ? `<p><em>"${message}"</em></p>` : ''}
-      <p>Click the link below to claim your funds:</p>
-      <a href="${claimUrl}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
-        Claim $${amount} USDC
-      </a>
-      <p>Or copy and paste this URL into your browser:</p>
-      <p style="word-break: break-all;">${claimUrl}</p>
-      <p><small>This link is valid for 30 days. After that, the sender can request a refund.</small></p>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 48px 32px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: #1a1a1a; font-size: 28px; font-weight: 700; margin: 0 0 32px 0; line-height: 1.2; letter-spacing: -0.5px;">
+          ${senderName} sent you $${amount}
+        </h1>
+      </div>
+      
+      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 32px 0;">
+        <div style="margin-bottom: 16px;">
+          <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">From</div>
+          <div style="color: #1a1a1a; font-size: 16px; font-weight: 500;">${senderEmail}</div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Amount</div>
+          <div style="color: #1a1a1a; font-size: 18px; font-weight: 600;">$${amount} USDC</div>
+        </div>
+        
+        <div>
+          <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Expires</div>
+          <div style="color: #1a1a1a; font-size: 14px; font-weight: 500;">7 days</div>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${claimUrl}" style="background-color: #222222; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block; border: none; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          Claim $${amount} USDC
+        </a>
+      </div>
+      
+      <div style="text-align: center; margin-top: 24px;">
+        <p style="color: #9ca3af; font-size: 13px; margin: 0; line-height: 1.4;">
+          via Between Friends
+        </p>
+      </div>
     </div>
   `
   
   const text = `
-You've received $${amount} USDC from ${senderEmail}!
+${senderName} sent you money!
+
+You received $${amount} USDC from ${senderEmail} via Between Friends.
 
 ${message ? `Message: "${message}"\n\n` : ''}
 
-Click this link to claim your funds: ${claimUrl}
+Claim your funds: ${claimUrl}
 
-This link is valid for 30 days. After that, the sender can request a refund.
+This link expires in 7 days.
   `
   
   return { subject, html, text }
@@ -128,29 +155,62 @@ export async function sendDirectTransferNotificationEmail(params: {
   txHash: string
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const subject = `You've received $${params.amount} USDC from ${params.senderEmail}`
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'support@keyhub.live'
+    const senderName = params.senderName || params.senderEmail.split('@')[0]
+    const subject = `${senderName} sent you $${params.amount}`
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'info@btwnfriends.com'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.btwnfriends.com'
     
     const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>You've received $${params.amount} USDC!</h2>
-        <p><strong>${params.senderEmail}</strong> has sent you <strong>$${params.amount} USDC</strong> directly to your wallet using Between Friends.</p>
-        <p>The funds have been deposited directly into your wallet. You can check your balance in the app or view the transaction on BaseScan:</p>
-        <a href="https://basescan.org/tx/${params.txHash}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
-          View Transaction
-        </a>
-        <p style="margin-top: 20px;"><small>Transaction Hash: ${params.txHash}</small></p>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 48px 32px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h1 style="color: #1a1a1a; font-size: 28px; font-weight: 700; margin: 0 0 32px 0; line-height: 1.2; letter-spacing: -0.5px;">
+            ${senderName} sent you $${params.amount}
+          </h1>
+        </div>
+        
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 32px 0;">
+          <div style="margin-bottom: 16px;">
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">From</div>
+            <div style="color: #1a1a1a; font-size: 16px; font-weight: 500;">${params.senderEmail}</div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Amount</div>
+            <div style="color: #1a1a1a; font-size: 18px; font-weight: 600;">$${params.amount} USDC</div>
+          </div>
+          
+          <div>
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Transaction</div>
+            <div style="color: #1a1a1a; font-size: 14px; font-family: 'SF Mono', Monaco, Consolas, monospace;">
+              <a href="https://basescan.org/tx/${params.txHash}" style="color: #374151; text-decoration: underline;">
+                ${params.txHash.slice(0, 12)}...${params.txHash.slice(-8)}
+              </a>
+            </div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${appUrl}" style="background-color: #222222; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block; border: none; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            Open Between Friends
+          </a>
+        </div>
+        
+        <div style="text-align: center; margin-top: 24px;">
+          <p style="color: #9ca3af; font-size: 13px; margin: 0; line-height: 1.4;">
+            via Between Friends
+          </p>
+        </div>
       </div>
     `
     
     const text = `
-You've received $${params.amount} USDC from ${params.senderEmail}!
+${senderName} sent you money!
 
-The funds have been deposited directly into your wallet.
+You received $${params.amount} USDC from ${params.senderEmail} via Between Friends.
 
-View transaction: https://basescan.org/tx/${params.txHash}
+Open the app: ${appUrl}
 
-Transaction Hash: ${params.txHash}
+Transaction: https://basescan.org/tx/${params.txHash}
     `
     
     console.log('📧 SENDING DIRECT TRANSFER NOTIFICATION EMAIL:', {
@@ -189,7 +249,7 @@ export async function sendClaimNotificationEmail(params: {
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const emailTemplate = generateClaimEmail(params)
-    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'support@keyhub.live'
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'info@btwnfriends.com'
     
     console.log('📧 SENDING CLAIM NOTIFICATION EMAIL:', {
       to: params.recipientEmail,
