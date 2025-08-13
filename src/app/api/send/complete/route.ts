@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createTransaction, getUserByUserId, getUserByEmail } from '@/lib/models'
+import { createTransaction, getUserByUserId, getUserByEmail, getPendingTransfer } from '@/lib/models'
+import { sendClaimNotificationEmail } from '@/lib/email'
 import { z } from 'zod'
 
 // Force dynamic rendering for this API route
@@ -89,12 +90,55 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Send email notification for escrow transfers
+    if (transferType === 'escrow' && transferId) {
+      try {
+        // Get the transfer details to get claim token
+        const pendingTransfer = await getPendingTransfer(transferId)
+        if (pendingTransfer && pendingTransfer.claimToken) {
+          // Generate claim URL
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.btwnfriends.com'
+          const claimUrl = `${baseUrl}/claim?transferId=${transferId}&token=${pendingTransfer.claimToken}`
+          
+          console.log('📧 SENDING ESCROW NOTIFICATION EMAIL:', {
+            recipientEmail,
+            senderEmail,
+            amount,
+            transferId,
+            claimUrl: claimUrl.replace(pendingTransfer.claimToken, '[TOKEN_REDACTED]')
+          })
+          
+          // Send email notification
+          const emailResult = await sendClaimNotificationEmail({
+            recipientEmail,
+            senderEmail,
+            senderName: sender.displayName,
+            amount,
+            claimUrl,
+            expiryDate: pendingTransfer.expiryDate
+          })
+          
+          if (emailResult.success) {
+            console.log('✅ ESCROW EMAIL NOTIFICATION SENT SUCCESSFULLY')
+          } else {
+            console.error('❌ FAILED TO SEND ESCROW EMAIL NOTIFICATION:', emailResult.error)
+          }
+        } else {
+          console.error('❌ PENDING TRANSFER NOT FOUND OR MISSING CLAIM TOKEN:', transferId)
+        }
+      } catch (emailError) {
+        console.error('❌ ERROR SENDING ESCROW EMAIL NOTIFICATION:', emailError)
+        // Don't fail the entire request if email sending fails
+      }
+    }
+    
     return NextResponse.json({
       success: true,
       message: 'Transaction completed and recorded in history',
       transactionType: 'sent',
       senderRecord: true,
-      recipientRecord: transferType === 'direct' && recipient.exists
+      recipientRecord: transferType === 'direct' && recipient.exists,
+      emailNotificationSent: transferType === 'escrow'
     })
     
   } catch (error) {

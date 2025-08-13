@@ -1,4 +1,7 @@
 // Email utility functions
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export interface EmailTemplate {
   subject: string
@@ -128,11 +131,28 @@ export async function sendClaimNotificationEmail(params: {
 }): Promise<{ success: boolean; error?: string }> {
   try {
     const emailTemplate = generateClaimEmail(params)
-    // This would typically use a service like SendGrid, AWS SES, etc.
-    console.log('Sending claim notification email:', emailTemplate)
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'support@keyhub.live'
+    
+    console.log('📧 SENDING CLAIM NOTIFICATION EMAIL:', {
+      to: params.recipientEmail,
+      from: fromAddress,
+      subject: emailTemplate.subject,
+      amount: params.amount,
+      senderEmail: params.senderEmail
+    })
+    
+    const response = await resend.emails.send({
+      from: fromAddress,
+      to: params.recipientEmail,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html,
+      text: emailTemplate.text,
+    })
+    
+    console.log('✅ EMAIL SENT SUCCESSFULLY:', { emailId: response.data?.id })
     return { success: true }
   } catch (error) {
-    console.error('Error sending claim notification email:', error)
+    console.error('❌ ERROR SENDING CLAIM NOTIFICATION EMAIL:', error)
     return { success: false, error: 'Failed to send email' }
   }
 }
