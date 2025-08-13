@@ -72,20 +72,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       let finalTxHash: string | null = null
 
       if (result.transferType === 'direct') {
-        // Check if gas sponsorship is needed
-        if (result.transaction.gasSponsored) {
-          setCurrentStep('Processing gas-sponsored transfer...')
-          
-          // TODO: Implement gas-sponsored flow
-          // This would require user to sign an approval and let admin handle gas
-          console.log('🎁 GAS SPONSORSHIP NEEDED - User has insufficient ETH for gas')
-          
-          // For now, show a message and exit - in production this would trigger the sponsored flow
-          alert('✨ Gas sponsorship detected! This feature will cover your gas fees when you have insufficient ETH.')
-          onSuccess('gas-sponsored-pending')
-          return // Skip normal flow for now
-        }
-        
         // Single transaction - direct USDC transfer
         setCurrentStep('Sending USDC...')
         
