@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createTransaction, getUserByUserId, getUserByEmail, getPendingTransfer } from '@/lib/models'
-import { sendClaimNotificationEmail } from '@/lib/email'
+import { sendClaimNotificationEmail, sendDirectTransferNotificationEmail } from '@/lib/email'
 import { z } from 'zod'
 
 // Force dynamic rendering for this API route
@@ -83,6 +83,33 @@ export async function POST(request: NextRequest) {
             txHash,
             status: 'confirmed'
           })
+          
+          // Send email notification for direct transfer
+          try {
+            console.log('📧 SENDING DIRECT TRANSFER NOTIFICATION EMAIL:', {
+              recipientEmail,
+              senderEmail,
+              amount,
+              txHash
+            })
+            
+            const emailResult = await sendDirectTransferNotificationEmail({
+              recipientEmail,
+              senderEmail,
+              senderName: sender.displayName,
+              amount,
+              txHash
+            })
+            
+            if (emailResult.success) {
+              console.log('✅ DIRECT TRANSFER EMAIL NOTIFICATION SENT SUCCESSFULLY')
+            } else {
+              console.error('❌ FAILED TO SEND DIRECT TRANSFER EMAIL NOTIFICATION:', emailResult.error)
+            }
+          } catch (emailError) {
+            console.error('❌ ERROR SENDING DIRECT TRANSFER EMAIL NOTIFICATION:', emailError)
+            // Don't fail the entire request if email sending fails
+          }
         }
       } catch (recipientError) {
         console.error('Failed to create recipient transaction record:', recipientError)
@@ -138,7 +165,7 @@ export async function POST(request: NextRequest) {
       transactionType: 'sent',
       senderRecord: true,
       recipientRecord: transferType === 'direct' && recipient.exists,
-      emailNotificationSent: transferType === 'escrow'
+      emailNotificationSent: true // Now sent for both direct and escrow transfers
     })
     
   } catch (error) {

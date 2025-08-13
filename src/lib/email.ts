@@ -120,6 +120,64 @@ export async function sendRefundNotificationEmail(params: {
 // Alias for backward compatibility
 export const sendRefundConfirmationEmail = sendRefundNotificationEmail
 
+export async function sendDirectTransferNotificationEmail(params: {
+  recipientEmail: string
+  senderEmail: string
+  senderName?: string
+  amount: string
+  txHash: string
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const subject = `You've received $${params.amount} USDC from ${params.senderEmail}`
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'support@keyhub.live'
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>You've received $${params.amount} USDC!</h2>
+        <p><strong>${params.senderEmail}</strong> has sent you <strong>$${params.amount} USDC</strong> directly to your wallet using Between Friends.</p>
+        <p>The funds have been deposited directly into your wallet. You can check your balance in the app or view the transaction on BaseScan:</p>
+        <a href="https://basescan.org/tx/${params.txHash}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">
+          View Transaction
+        </a>
+        <p style="margin-top: 20px;"><small>Transaction Hash: ${params.txHash}</small></p>
+      </div>
+    `
+    
+    const text = `
+You've received $${params.amount} USDC from ${params.senderEmail}!
+
+The funds have been deposited directly into your wallet.
+
+View transaction: https://basescan.org/tx/${params.txHash}
+
+Transaction Hash: ${params.txHash}
+    `
+    
+    console.log('📧 SENDING DIRECT TRANSFER NOTIFICATION EMAIL:', {
+      to: params.recipientEmail,
+      from: fromAddress,
+      subject,
+      amount: params.amount,
+      senderEmail: params.senderEmail,
+      txHash: params.txHash
+    })
+    
+    const response = await resend.emails.send({
+      from: fromAddress,
+      to: params.recipientEmail,
+      subject,
+      html,
+      text,
+    })
+    
+    console.log('✅ DIRECT TRANSFER EMAIL SENT SUCCESSFULLY:', { emailId: response.data?.id })
+    return { success: true }
+  } catch (error) {
+    console.error('❌ ERROR SENDING DIRECT TRANSFER EMAIL:', error)
+    return { success: false, error: 'Failed to send email' }
+  }
+}
+
 export async function sendClaimNotificationEmail(params: {
   recipientEmail: string
   senderEmail: string
