@@ -19,8 +19,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Between Friends | Pals Don\'t Tax',
-  description: 'Pals don\'t tax. Secure USDC transfers between friends powered by CDP.',
+  title: 'Between Friends',
+  description: 'Your Pal shouldn\'t be taxing you.',
   keywords: [
     'Between Friends',
     'USDC',
@@ -58,26 +58,26 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: 'Between Friends | Pals Don\'t Tax',
-    description: 'Pals don\'t tax. Secure USDC transfers between friends powered by CDP.',
+    title: 'Between Friends',
+    description: 'Your Pal shouldn\'t be taxing you.',
     url: 'https://btwnfriends.com',
     siteName: 'Between Friends',
     type: 'website',
     images: [
       {
-        url: 'https://btwnfriends.com/logo.png',
+        url: 'https://btwnfriends.com/og.png',
         width: 1200,
         height: 630,
-        alt: 'Between Friends - Pals Don\'t Tax',
+        alt: 'Between Friends - Your Pal shouldn\'t be taxing you',
       },
     ],
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Between Friends | Pals Don\'t Tax',
-    description: 'Pals don\'t tax. Secure USDC transfers between friends powered by CDP.',
-    images: ['https://btwnfriends.com/logo.png'],
+    title: 'Between Friends',
+    description: 'Your Pal shouldn\'t be taxing you.',
+    images: ['https://btwnfriends.com/og.png'],
   },
   metadataBase: new URL('https://btwnfriends.com'),
   other: {

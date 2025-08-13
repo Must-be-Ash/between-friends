@@ -1,7 +1,7 @@
 {
   "name": "Between Friends",
   "short_name": "Between Friends",
-  "description": "Pals don't tax. Secure USDC transfers between friends powered by CDP.",
+  "description": "Your Pal shouldn't be taxing you.",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

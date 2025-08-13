@@ -2,7 +2,7 @@
   "name": "between-friends",
   "version": "0.1.0",
   "private": true,
-  "description": "Between Friends - Your pal shouldn't rip you off.",
+  "description": "Between Friends - Your Pal shouldn't be taxing you.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
