@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 export default function ContactsPage() {
   const router = useRouter()
-  const currentUser = useCurrentUser()
+  const { currentUser } = useCurrentUser()
   const [view, setView] = useState<'all' | 'favorites' | 'search'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -52,6 +52,7 @@ export default function ContactsPage() {
   }
 
   const handleDeviceSync = async () => {
+    if (!currentUser?.userId) return
     const result = await syncContacts(currentUser.userId)
     if (result.success) {
       await refreshContacts()

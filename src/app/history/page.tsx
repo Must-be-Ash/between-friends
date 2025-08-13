@@ -31,8 +31,8 @@ type FilterStatus = 'all' | 'confirmed' | 'pending' | 'failed'
 
 export default function HistoryPage() {
   const router = useRouter()
-  const isSignedIn = useIsSignedIn()
-  const currentUser = useCurrentUser()
+  const { isSignedIn } = useIsSignedIn()
+  const { currentUser } = useCurrentUser()
   
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)

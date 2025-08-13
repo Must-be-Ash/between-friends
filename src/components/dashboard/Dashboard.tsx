@@ -29,9 +29,9 @@ interface DashboardPendingClaim {
 }
 
 export function Dashboard() {
-  const currentUser = useCurrentUser()
-  const evmAddress = useEvmAddress()
-  const signOut = useSignOut()
+  const { currentUser } = useCurrentUser()
+  const { evmAddress } = useEvmAddress()
+  const { signOut } = useSignOut()
   
   const [balance, setBalance] = useState<string>('0')
   const [isLoadingBalance, setIsLoadingBalance] = useState(true)

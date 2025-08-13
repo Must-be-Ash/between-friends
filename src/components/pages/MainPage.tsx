@@ -6,8 +6,8 @@ import { Dashboard } from '@/components/dashboard/Dashboard'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 
 export function MainPage() {
-  const isInitialized = useIsInitialized()
-  const isSignedIn = useIsSignedIn()
+  const { isInitialized } = useIsInitialized()
+  const { isSignedIn } = useIsSignedIn()
 
   // Show loading while CDP initializes
   if (!isInitialized) {

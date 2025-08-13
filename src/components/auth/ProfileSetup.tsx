@@ -20,7 +20,7 @@ export function ProfileSetup({ user, email, onComplete }: ProfileSetupProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   
-  const evmAddress = useEvmAddress()
+  const { evmAddress } = useEvmAddress()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

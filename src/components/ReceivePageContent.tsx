@@ -8,8 +8,8 @@ import { SimpleReceive } from '@/components/receive/SimpleReceive'
 
 export default function ReceivePageContent() {
   const router = useRouter()
-  const isSignedIn = useIsSignedIn()
-  const evmAddress = useEvmAddress()
+  const { isSignedIn } = useIsSignedIn()
+  const { evmAddress } = useEvmAddress()
 
   // Redirect if not signed in
   if (!isSignedIn) {

@@ -31,9 +31,9 @@ interface TransferData {
 
 export default function SendPage() {
   const router = useRouter()
-  const isSignedIn = useIsSignedIn()
-  const currentUser = useCurrentUser()
-  const evmAddress = useEvmAddress()
+  const { isSignedIn } = useIsSignedIn()
+  const { currentUser } = useCurrentUser()
+  const { evmAddress } = useEvmAddress()
   
   const [currentStep, setCurrentStep] = useState<SendStep>('input')
   const [balance, setBalance] = useState<string>('0')
@@ -145,7 +145,7 @@ export default function SendPage() {
             <div></div>
           </div>
 
-          {currentStep === 'input' && currentUser && (
+          {currentStep === 'input' && currentUser?.userId && (
             <RecipientInput
               onShowConfirmation={handleShowConfirmation}
               userBalance={balance}
@@ -175,7 +175,7 @@ export default function SendPage() {
       <div className="h-32 md:h-16"></div>
 
       {/* Confirmation Modal - Rendered at page level outside glassmorphism container */}
-      {showConfirmationModal && pendingTransferData && currentUser && evmAddress && (
+      {showConfirmationModal && pendingTransferData && currentUser?.userId && evmAddress && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-3xl flex items-center justify-center p-4 z-50"
           onClick={handleConfirmationBack}

@@ -2,15 +2,19 @@
 
 ## Overview
 
-[Wagmi](https://wagmi.sh/) is a TypeScript library for Ethereum development that provides a collection of React Hooks for interacting with Ethereum-compatible blockchains. It's built on top of `ethers.js` and offers a modern, developer-friendly API for building dapps.
+[Wagmi](https://wagmi.sh/) is a TypeScript library for Ethereum development that provides a collection of React Hooks for interacting with Ethereum-compatible blockchains. It's built on top of `viem` and offers a modern, developer-friendly API for building dapps.
 
 The NPM package @coinbase/cdp-wagmi is a bridge that connects Coinbase’s CDP (Coinbase Developer Platform) Wallets to the wagmi ecosystem—bringing CDP-powered smart wallet functionality into React apps using wagmi hooks.
 
 You'll learn how to install the package, set up the provider, and render your first component.
 
+<Tip>
+  Check out the [CDP Web SDK reference](https://coinbase.github.io/cdp-web) for comprehensive method signatures, types, and examples.
+</Tip>
+
 ## Prerequisites
 
-* [Node.js 20 or 22](https://nodejs.org/en/download) installed (Node.js 21 is not supported)
+* [Node.js 22+](https://nodejs.org/en/download) installed
 * A node package manager installed (i.e., `npm`, `pnpm`, or `yarn`)
 * A free [CDP Portal](https://portal.cdp.coinbase.com) account
 * Basic familiarity with React and Wagmi
@@ -92,7 +96,30 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 ```
 
-## 4. Use Wagmi hooks
+## 4. Sign in the user
+
+Before using Wagmi hooks, users need to be signed in using either CDP React components or hooks. When the user verifies their OTP and is signed in, they will automatically be connected with wagmi.
+
+You can use either approach:
+
+**Option 1: Using React Components**
+
+```tsx
+import { AuthButton } from "@coinbase/cdp-react/components/AuthButton";
+
+<AuthButton /> // Users sign in via this button
+```
+
+**Option 2: Using React Hooks**
+
+```tsx
+import { useSignInWithEmail, useVerifyEmailOTP } from "@coinbase/cdp-hooks";
+// Implement your own sign-in flow using these hooks
+```
+
+Once signed in, the user's wallet is automatically available to wagmi.
+
+## 5. Use Wagmi hooks
 
 Your application can now call Wagmi hooks. Here's an example component that demonstrates wagmi's `useSendTransaction` hook:
 
@@ -236,5 +263,6 @@ export default function WagmiTransaction() {
 
 ## What to read next
 
+* [**CDP Web SDK Documentation**](https://coinbase.github.io/cdp-web): Comprehensive API reference for the CDP Web SDK
 * [**Embedded Wallets - React Hooks**](/embedded-wallets/react-hooks): Learn about available CDP hooks that complement Wagmi
 * [**Wagmi Documentation**](https://wagmi.sh): Explore the full Wagmi documentation for advanced usage

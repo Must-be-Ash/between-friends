@@ -21,21 +21,31 @@ Build a dapp using Coinbase Developer Platform (CDP) embedded wallet in under 5 
 ## Prerequisites
 
 * A free [CDP Portal](https://portal.cdp.coinbase.com) account and project
-* [Node.js 20 or 22](https://nodejs.org/en/download) (Node.js 21 is not supported due to compatibility issues with Vite)
+* [Node.js 22+](https://nodejs.org/en/download)
 * A node package manager installed (i.e., `npm`, `pnpm`, or `yarn`)
 * Basic familiarity with React and TypeScript
 
 Let's get started by scaffolding a new React app with the necessary dependencies.
 
-## 1. Allowlist your local app
+## 1. Add your domain
+
+To begin, add your domain to the list of [allowed domains](https://portal.cdp.coinbase.com/products/embedded-wallets/domains) in CDP Portal.
 
 <Steps titleSize="p">
-  <Step title="Add an origin">
-    Navigate to the [Embedded Wallet Configuration](https://portal.cdp.coinbase.com/products/embedded-wallets/cors) in CDP Portal, and click **Add origin** to include your local app.
+  <Step title="Access CDP Portal">
+    Navigate to the [Domains Configuration](https://portal.cdp.coinbase.com/products/embedded-wallets/domains) in CDP Portal, and click **Add domain** to include your local app.
+
+    <Frame>
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/cors-config-add-domain.png" alt="Add domain dialog in CDP Portal" />
+    </Frame>
   </Step>
 
-  <Step title="Enter origin URL">
+  <Step title="Add your domain">
     Use `http://localhost:3000` (the port your demo app will run locally).
+
+    <Frame>
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/cors-config-with-localhost.png" alt="Domain configuration with localhost" />
+    </Frame>
 
     <Warning>
       Do not do this in your CDP project intended for production use. Malicious apps running locally could impersonate your frontend and abuse your project credentials.
@@ -43,10 +53,10 @@ Let's get started by scaffolding a new React app with the necessary dependencies
   </Step>
 
   <Step title="Save your changes">
-    Click **Add origin** again to save your changes.
+    Click **Add domain** again to save your changes.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-cors.png" alt="CDP Project ID in project settings" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/cors-config-with-domain.png" alt="Domain configuration saved in CDP Portal" />
     </Frame>
 
     You should see your local app URL listed in the CDP Portal dashboard. The allowlist will take effect immediately upon saving.
@@ -80,7 +90,7 @@ Let's get started by scaffolding a new React app with the necessary dependencies
     While the app is being created, navigate to [CDP Portal](https://portal.cdp.coinbase.com) and select your project from the top-left dropdown. Clicking the gear icon will take you to your project details:
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-project-id.png" alt="CDP Project ID in project settings" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-project-id.png" alt="CDP Project ID in project settings" />
     </Frame>
 
     Copy the **Project ID** value. You will use this in the next step when configuring your demo app.
@@ -100,35 +110,29 @@ Ok to proceed? (y) y
 ✔ Project name: … cdp-app-react
 ✔ Select a template: › React
 ✔ CDP Project ID (Find your project ID at https://portal.cdp.coinbase.com/projects/overview): … 8c21e60b-c8af-4286-a0d3-111111111111
-✔ Confirm you have whitelisted 'http://localhost:3000' at https://portal.cdp.coinbase.com/products/embedded-wallets/cors by typing 'y' … y
-
-Scaffolding project in cdp-app-demo-new...
-Copying project id to .env
-
-Done. Now run your app:
-
-cd cdp-app-react
-npm install
-npm run dev
+✔ Confirm you have whitelisted 'http://localhost:3000' by typing 'y' … y
 ```
 
 ## 4. Run
 
-Navigate to your project directory and start the development server:
+Navigate to your project directory, install dependencies, and start the development server:
 
 <CodeGroup>
   ```bash npm
   cd cdp-app-react
+  npm install
   npm run dev
   ```
 
   ```bash pnpm
   cd cdp-app-react
+  pnpm install
   pnpm dev
   ```
 
   ```bash yarn
   cd cdp-app-react
+  yarn install
   yarn dev
   ```
 </CodeGroup>
@@ -152,13 +156,13 @@ Now that your embedded wallet is configured and your app is running, let's try i
     Head to [http://localhost:3000](http://localhost:3000) and click the **Sign In** button.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-1-signin.png" alt="CDP React Demo Sign In" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-1-signin.png" alt="CDP React Demo Sign In" />
     </Frame>
   </Step>
 
   <Step title="Enter your email">
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-2-continue-with-email.png" alt="CDP React Demo Email" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-2-continue-with-email.png" alt="CDP React Demo Email" />
     </Frame>
   </Step>
 
@@ -166,7 +170,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     Enter the verification code sent to your e-mail.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-3-verify.png" alt="CDP React Demo Verify" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-3-verify.png" alt="CDP React Demo Verify" />
     </Frame>
   </Step>
 
@@ -180,7 +184,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     From the demo app, you can copy-and-paste your wallet address from the top-right corner. You can also monitor your wallet balance and (eventually -- keep reading!) send transactions. You should see similar to the following:
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-4-post-signin.png" alt="CDP React Demo Transaction" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-4-post-signin.png" alt="CDP React Demo Transaction" />
     </Frame>
 
     Find record of your new wallet on Base Sepolia explorer using the URL: `https://sepolia.basescan.org/address/YOUR-WALLET-ADDRESS`.
@@ -203,7 +207,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     </Accordion>
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-demo-faucet.png" alt="CDP React Demo Fund Wallet" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-demo-faucet.png" alt="CDP React Demo Fund Wallet" />
     </Frame>
   </Step>
 
@@ -213,7 +217,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     Click **Send Transaction** to initiate the transfer. Once complete, you'll see a transaction hash that you can look up on the blockchain explorer.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod-embedded-wallets/images/embedded-wallet-5-post-tx.png" alt="CDP React Demo Transaction" />
+      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-5-post-tx.png" alt="CDP React Demo Transaction" />
     </Frame>
 
     🎉 You've successfully created an embedded wallet and sent your first transaction! Try adding some [React Hooks](/embedded-wallets/react-hooks) or additional [components](/embedded-wallets/react-components) to expand your app.
@@ -256,13 +260,13 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App.tsx";
-import { CDP_CONFIG } from "./config.ts";
+import { APP_CONFIG, CDP_CONFIG } from "./config.ts";
 import { theme } from "./theme.ts";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <CDPReactProvider config={CDP_CONFIG} theme={theme}>
+    <CDPReactProvider config={CDP_CONFIG} app={APP_CONFIG} theme={theme}>
       <App />
     </CDPReactProvider>
   </StrictMode>,
@@ -277,12 +281,31 @@ createRoot(document.getElementById("root")!).render(
 
 With just this single provider, your entire app gains:
 
-* **Embedded wallets** - No MetaMask or browser extensions required
-* **Email authentication** - Users sign in like any Web2 app
-* **Automatic key management** - CDP handles all private keys securely
-* **Built-in theme support** - Match your brand with the `theme` prop
+* **Embedded wallets**: No MetaMask or browser extensions required
+* **Email authentication**: Users sign in like any Web2 app
+* **Automatic key management**: CDP handles all private keys securely
+* **Built-in theme support**: Match your brand with the `theme` prop
 
 The `CDP_CONFIG` contains your **Project ID** from setup, stored securely in an environment variable (`VITE_CDP_PROJECT_ID`).
+
+The `APP_CONFIG` contains metadata about your application:
+
+* **name**: Your app's display name shown in the wallet UI
+* **logoUrl**: URL to your app's logo displayed during authentication
+
+Here's the complete `src/config.ts` file:
+
+```tsx src/config.ts
+import { type Config } from "@coinbase/cdp-core";
+import { type AppConfig } from "@coinbase/cdp-react";
+
+export const CDP_CONFIG: Config = { projectId: import.meta.env.VITE_CDP_PROJECT_ID };
+
+export const APP_CONFIG: AppConfig = {
+  name: "CDP React StarterKit",
+  logoUrl: "http://localhost:3000/logo.svg",
+};
+```
 
 <Tip>
   **Using Next.js?** Check out our [Next.js integration guide](/embedded-wallets/nextjs) for`"use client"` requirements and common gotchas.
@@ -310,8 +333,8 @@ import SignedInScreen from "./SignedInScreen";
 import SignInScreen from "./SignInScreen";
 
 function App() {
-  const isInitialized = useIsInitialized();
-  const isSignedIn = useIsSignedIn();
+  const { isInitialized } = useIsInitialized();
+  const { isSignedIn } = useIsSignedIn();
 
   return (
     <div className="app flex-col-container flex-grow">
@@ -502,8 +525,8 @@ interface Props {
 
 function Transaction(props: Props) {
   const { balance, onSuccess } = props;
-  const sendEvmTransaction = useSendEvmTransaction();  
-  const evmAddress = useEvmAddress();                 
+  const { sendEvmTransaction } = useSendEvmTransaction();  
+  const { evmAddress } = useEvmAddress();                 
   const [isPending, setIsPending] = useState(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
 ```
@@ -706,29 +729,42 @@ The demo app provides extensive theming capabilities through CSS variables and t
 
 ```tsx src/theme.ts
 export const theme: Partial<Theme> = {
-  "colors-primary": "var(--cdp-example-accent-color)",
-  "colors-background": "var(--cdp-example-card-bg-color)",
-  "colors-text": "var(--cdp-example-text-color)",
-  "colors-border": "var(--cdp-example-card-border-color)",
-  "fontFamily-sans": "var(--cdp-example-font-family)",
+  "colors-bg-default": "var(--cdp-example-card-bg-color)",
+  "colors-bg-overlay": "var(--cdp-example-bg-overlay-color)",
+  "colors-bg-skeleton": "var(--cdp-example-bg-skeleton-color)",
+  "colors-bg-primary": "var(--cdp-example-accent-color)",
+  "colors-bg-secondary": "var(--cdp-example-bg-low-contrast-color)",
+  "colors-fg-default": "var(--cdp-example-text-color)",
+  "colors-fg-muted": "var(--cdp-example-text-secondary-color)",
+  "colors-fg-primary": "var(--cdp-example-accent-color)",
+  "colors-fg-onPrimary": "var(--cdp-example-accent-foreground-color)",
+  "colors-fg-onSecondary": "var(--cdp-example-text-color)",
+  "colors-line-default": "var(--cdp-example-card-border-color)",
+  "colors-line-heavy": "var(--cdp-example-text-secondary-color)",
+  "colors-line-primary": "var(--cdp-example-accent-color)",
+  "font-family-sans": "var(--cdp-example-font-family)",
+  "font-size-base": "var(--cdp-example-base-font-size)",
   // ... maps to CSS variables defined in index.css
 };
 ```
 
 The app includes:
 
-* **Dark mode support**: Automatically switches between light and dark themes based on system preferences
+* **Dark mode support**: Enables light and dark themes
 * **Customizable colors**: Primary accent, backgrounds, text, borders, and more
-* **Typography control**: Font family, sizes, and weights
+* **Typography control**: Font family and base font size
 * **Responsive breakpoints**: Different styles for mobile, tablet, and desktop
 * **Component theming**: Style CDP components like buttons, inputs, and modals
 
 All theme values are defined as CSS variables in `index.css`, making it easy to rebrand the entire app by updating a few color values.
 
+For more information on theme customization, see the [theme customization documentation](/embedded-wallets/react-components#3-customize-theme-optional).
+
 ## What to read next
 
 * [`create-cdp-app`](https://www.npmjs.com/package/@coinbase/create-cdp-app): View the `npm` package directly
 * [**CDP Web SDK Documentation**](https://coinbase.github.io/cdp-web): Comprehensive API reference for the CDP Web SDK
+* [**End User Authentication**](/embedded-wallets/end-user-authentication): Deep dive into authentication methods, error handling, and advanced patterns
 * [**Embedded Wallet - React Hooks**](/embedded-wallets/react-hooks): Learn about available hooks like `useSignInWithEmail`, `useEvmAddress`, and `useSendEvmTransaction`
 * [**Embedded Wallet - React Components**](/embedded-wallets/react-components): Explore pre-built components for authentication, wallet management, and transactions
 * [**Embedded Wallet - Wagmi Integration**](/embedded-wallets/wagmi): Use CDP wallets with the popular wagmi library for Ethereum development

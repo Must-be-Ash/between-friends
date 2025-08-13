@@ -17,9 +17,9 @@ export function AuthPage() {
   const [, setIsNewUser] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   
-  const signInWithEmail = useSignInWithEmail()
-  const verifyEmailOTP = useVerifyEmailOTP()
-  const currentUser = useCurrentUser()
+  const { signInWithEmail } = useSignInWithEmail()
+  const { verifyEmailOTP } = useVerifyEmailOTP()
+  const { currentUser } = useCurrentUser()
 
   const handleEmailSubmit = async (emailValue: string) => {
     setIsLoading(true)
@@ -104,7 +104,7 @@ export function AuthPage() {
           
           {step === 'profile' && currentUser && (
             <ProfileSetup
-              user={currentUser}
+              user={{ userId: currentUser.userId }}
               email={email}
               onComplete={handleProfileComplete}
             />

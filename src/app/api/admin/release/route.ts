@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPendingTransfer, updatePendingTransferStatus, createTransaction, getUserByUserId } from '@/lib/models'
 import { prepareSimpleEscrowAdminRelease } from '@/lib/simple-escrow'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { validateCDPAuth, requireUserMatch, requireEmailMatch } from '@/lib/auth'
 import { z } from 'zod'
 import { Address, createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -22,9 +24,19 @@ if (!ADMIN_PRIVATE_KEY) {
 /**
  * Admin Release API - Handles gasless claiming
  * This endpoint is called when users click "Claim" - admin wallet pays gas, user receives USDC
+ * Requires CDP authentication to ensure only verified users can claim their funds
  */
 export async function POST(request: NextRequest) {
   try {
+    // Validate CDP authentication first
+    const authResult = await validateCDPAuth(request)
+    if (authResult.error || !authResult.user) {
+      return NextResponse.json(
+        { error: authResult.error || 'Authentication required' },
+        { status: authResult.status || 401 }
+      )
+    }
+
     if (!ADMIN_PRIVATE_KEY) {
       return NextResponse.json(
         { error: 'Admin wallet not configured' },
@@ -36,6 +48,14 @@ export async function POST(request: NextRequest) {
     
     // Validate request
     const { transferId, claimToken, userId } = AdminReleaseRequestSchema.parse(body)
+    
+    // Verify the authenticated user matches the request
+    if (!requireUserMatch(authResult.user.userId, userId)) {
+      return NextResponse.json(
+        { error: 'Authentication mismatch - you can only claim your own transfers' },
+        { status: 403 }
+      )
+    }
     
     // Get user info
     const claimer = await getUserByUserId(userId)
@@ -62,6 +82,17 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       )
     }
+    
+    // Additional security: Verify the authenticated user's email matches the transfer recipient  
+    // Note: Email verification temporarily disabled due to CDP v0.0.19 API changes
+    // TODO: Re-enable proper email verification once we have proper access tokens working
+    // const authenticatedEmail = authResult.user.authenticationMethods?.email?.email
+    // if (authenticatedEmail && !requireEmailMatch(authenticatedEmail, transfer.recipientEmail)) {
+    //   return NextResponse.json(
+    //     { error: 'Authenticated email does not match transfer recipient' },
+    //     { status: 403 }
+    //   )
+    // }
     
     // Verify claim token
     if (transfer.claimToken !== claimToken) {
@@ -194,33 +225,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * GET - Admin wallet status (for monitoring)
- */
-export async function GET() {
-  try {
-    if (!ADMIN_PRIVATE_KEY) {
-      return NextResponse.json({
-        configured: false,
-        error: 'Admin wallet not configured'
-      })
-    }
-
-    const adminAccount = privateKeyToAccount(ADMIN_PRIVATE_KEY as `0x${string}`)
-    
-    // TODO: Get balance and other status info
-    return NextResponse.json({
-      configured: true,
-      address: adminAccount.address,
-      network: process.env.NODE_ENV === 'development' ? 'base-sepolia' : 'base',
-      // balance: '...' // Would require a read call
-    })
-    
-  } catch (error) {
-    console.error('Admin status error:', error)
-    return NextResponse.json(
-      { error: 'Failed to get admin status' },
-      { status: 500 }
-    )
-  }
-}
+// GET endpoint removed for security reasons - was exposing admin wallet address
+// If admin monitoring is needed, implement with proper authentication

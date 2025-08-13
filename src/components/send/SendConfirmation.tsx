@@ -25,7 +25,7 @@ interface CDPUser {
 interface SendConfirmationProps {
   transferData: TransferData
   currentUser: CDPUser
-  evmAddress: string
+  evmAddress: string | null
   onSuccess: (txHash: string) => void
   onBack: () => void
 }
@@ -39,10 +39,10 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   
   const { recipient, amount } = transferData
   const isDirect = recipient.transferType === 'direct'
-  const sendEvmTransaction = useSendEvmTransaction()
+  const { sendEvmTransaction } = useSendEvmTransaction()
 
   const handleConfirmSend = async () => {
-    if (isProcessing) return
+    if (isProcessing || !evmAddress) return
 
     setIsProcessing(true)
     setError(null)
@@ -191,6 +191,15 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               step: `${i + 1}/${transactions.length}`,
               timestamp: new Date().toISOString()
             })
+            
+            // If this is an approval transaction and there are more transactions, wait for confirmation
+            if (tx.description?.includes('Approve') && i < transactions.length - 1) {
+              setCurrentStep('Waiting for approval confirmation...')
+              console.log('⏳ Waiting for approval transaction to be confirmed before proceeding...')
+              
+              // Wait 1.4 seconds for the approval to be confirmed on-chain
+              await new Promise(resolve => setTimeout(resolve, 1400))
+            }
             
             // Store the final transaction hash (deposit transaction)
             if (i === transactions.length - 1) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { CDPReactProvider } from '@coinbase/cdp-react'
+import { CDPReactProvider } from '@coinbase/cdp-react/components/CDPReactProvider'
 import { CDP_CONFIG, APP_CONFIG } from '@/lib/cdp'
 
 interface CDPProviderProps {

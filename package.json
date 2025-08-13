@@ -11,9 +11,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@coinbase/cdp-core": "^0.0.13",
-    "@coinbase/cdp-hooks": "^0.0.13",
-    "@coinbase/cdp-react": "^0.0.13",
+    "@coinbase/cdp-core": "^0.0.19",
+    "@coinbase/cdp-hooks": "^0.0.19",
+    "@coinbase/cdp-react": "^0.0.19",
+    "@coinbase/cdp-sdk": "^1.35.0",
     "@vercel/analytics": "^1.5.0",
     "autoprefixer": "^10.4.21",
     "clsx": "^2.1.1",

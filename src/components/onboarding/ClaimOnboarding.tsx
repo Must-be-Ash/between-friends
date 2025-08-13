@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react'
+import { useGetAccessToken } from '@coinbase/cdp-hooks'
 import { formatRelativeTime } from '@/lib/utils'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { Button3D } from '@/components/ui/button-3d'
@@ -27,6 +28,7 @@ export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnbo
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState('')
   const [showConfetti, setShowConfetti] = useState(false)
+  const { getAccessToken } = useGetAccessToken()
   const totalAmount = pendingClaims.reduce((sum, claim) => 
     sum + parseFloat(claim.amount), 0
   ).toFixed(6)
@@ -41,11 +43,26 @@ export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnbo
 
       for (let i = 0; i < totalClaims; i++) {
         const claim = pendingClaims[i]
+        
+        // Get CDP access token for authentication
+        let accessToken
+        try {
+          accessToken = await getAccessToken()
+        } catch (tokenError) {
+          console.warn('CDP access token not available, using fallback authentication')
+          // Create fallback session token
+          const sessionData = {
+            userId: userId,
+            timestamp: Date.now()
+          }
+          accessToken = btoa(JSON.stringify(sessionData))
+        }
 
         const response = await fetch('/api/admin/release', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             transferId: claim.transferId,

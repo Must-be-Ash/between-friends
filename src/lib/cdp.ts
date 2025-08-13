@@ -1,5 +1,5 @@
 // CDP (Coinbase Developer Platform) utilities
-import { parseUnits } from 'viem'
+import { parseUnits, encodeFunctionData } from 'viem'
 
 export interface CDPConfig {
   projectId: string
@@ -64,15 +64,13 @@ export const CONTRACT_ADDRESSES = {
 export const CURRENT_NETWORK = process.env.NODE_ENV === 'development' ? 84532 : 8453
 
 // Default configurations that can be imported directly
-export const CDP_CONFIG = getCDPConfig()
+export const CDP_CONFIG = {
+  projectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID || ''
+}
 
 export const APP_CONFIG = {
   name: 'Between Friends',
-  network: CURRENT_NETWORK,
-  chainName: getChainName(CURRENT_NETWORK),
-  explorerUrl: getExplorerUrl(CURRENT_NETWORK),
-  usdcAddress: CONTRACT_ADDRESSES.USDC[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.USDC],
-  escrowAddress: CONTRACT_ADDRESSES.SIMPLE_ESCROW[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.SIMPLE_ESCROW]
+  logoUrl: '/logo.svg'
 }
 
 export function formatAddress(address: string): string {
@@ -98,13 +96,35 @@ export function prepareUSDCApproval(
   spenderAddress: string,
   amount: string
 ): TransactionRequest {
-  // This would encode the USDC approve function call
-  // approve(spender, amount) - using the amount parameter
+  // Encode the USDC approve function call: approve(address spender, uint256 amount)
+  // Function signature: approve(address,uint256) = 0x095ea7b3
   console.log('Preparing USDC approval for:', { senderAddress, spenderAddress, amount })
+  
+  // Convert amount to USDC units (6 decimals)
+  const amountWei = parseUnits(amount, 6)
+  
+  // Encode the function call
+  const approveData = encodeFunctionData({
+    abi: [
+      {
+        name: 'approve',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'spender', type: 'address' },
+          { name: 'amount', type: 'uint256' }
+        ],
+        outputs: [{ name: '', type: 'bool' }]
+      }
+    ],
+    functionName: 'approve',
+    args: [spenderAddress as `0x${string}`, amountWei]
+  })
+  
   return {
     to: CONTRACT_ADDRESSES.USDC[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.USDC] as `0x${string}`,
     value: BigInt(0),
-    data: '0x00', // Would contain encoded approve(spender, amount) call
+    data: approveData,
     gas: BigInt(100000),
     maxFeePerGas: BigInt(1000000000), // 1 gwei
     maxPriorityFeePerGas: BigInt(1000000000), // 1 gwei
