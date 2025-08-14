@@ -25,7 +25,7 @@ interface TransactionDetailProps {
 
 export function TransactionDetail({ transaction, isOpen, onClose }: TransactionDetailProps) {
   const [copied, setCopied] = useState<string | null>(null)
-  const [isRefunding, setIsRefunding] = useState(false)
+  // Refund functionality moved to admin-only automatic process
 
   if (!isOpen) return null
 
@@ -40,41 +40,9 @@ export function TransactionDetail({ transaction, isOpen, onClose }: TransactionD
     }
   }
 
-  const handleRefund = async () => {
-    if (!transaction.transferId || isRefunding) return
+  // Refund functionality removed - now handled automatically by admin after 7 days
 
-    setIsRefunding(true)
-    try {
-      const response = await fetch('/api/refund', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transferId: transaction.transferId
-        }),
-      })
-
-      if (response.ok) {
-        // Refresh the page or show success message
-        if (typeof window !== 'undefined') {
-          window.location.reload()
-        }
-      } else {
-        const error = await response.json()
-        alert(`Refund failed: ${error.error}`)
-      }
-    } catch (error) {
-      alert('Failed to process refund. Please try again.')
-    } finally {
-      setIsRefunding(false)
-    }
-  }
-
-  const canRefund = isEscrow && 
-                   transaction.status === 'unclaimed' && 
-                   isSent &&
-                   new Date().getTime() - new Date(transaction.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000 // 7 days
+  // Automatic refunds handled by admin after 7 days - no user action needed
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end sm:items-center justify-center p-4">
@@ -253,29 +221,10 @@ export function TransactionDetail({ transaction, isOpen, onClose }: TransactionD
               </a>
             )}
 
-            {canRefund && (
-              <button
-                onClick={handleRefund}
-                disabled={isRefunding}
-                className="w-full px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isRefunding ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Processing Refund...
-                  </div>
-                ) : (
-                  'Refund Unclaimed Transfer'
-                )}
-              </button>
-            )}
-
-            {isEscrow && transaction.status === 'unclaimed' && !canRefund && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-yellow-800 text-sm">
-                  <strong>Note:</strong> You can request a refund for this unclaimed transfer after 7 days 
+            {isEscrow && transaction.status === 'unclaimed' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-blue-800 text-sm">
+                  <strong>Note:</strong> This transfer will automatically refund after 7 days if not claimed
                   ({new Date(new Date(transaction.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}).
                 </p>
               </div>

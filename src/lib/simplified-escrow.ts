@@ -27,6 +27,24 @@ const SIMPLIFIED_ESCROW_ABI = [
       { name: 'recipient', type: 'address' }
     ],
     outputs: []
+  },
+  {
+    name: 'refund',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'transferId', type: 'bytes32' }
+    ],
+    outputs: []
+  },
+  {
+    name: 'adminRefund',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'transferId', type: 'bytes32' }
+    ],
+    outputs: []
   }
 ] as const
 
@@ -140,5 +158,43 @@ export async function isSimplifiedEscrowClaimable(transferId: string): Promise<{
       claimable: false,
       reason: 'Error checking escrow status'
     }
+  }
+}
+
+export interface SimplifiedEscrowRefundRequest {
+  to: `0x${string}`
+  data: `0x${string}`
+  value: bigint
+}
+
+/**
+ * Prepares a refund transaction for the SimplifiedEscrow contract
+ * Admin calls this to refund unclaimed transfers after timeout
+ */
+export function prepareSimplifiedEscrowRefund(params: {
+  transferId: string
+  senderAddress: string
+}): SimplifiedEscrowRefundRequest {
+  console.log('🔄 Preparing simplified escrow refund:', {
+    transferId: params.transferId,
+    senderAddress: '[ADDRESS_REDACTED]'
+  })
+  
+  // Convert transferId to bytes32
+  const transferIdBytes32 = keccak256(toBytes(params.transferId))
+  
+  // Encode the adminRefund function call (admin-only refund)
+  const data = encodeFunctionData({
+    abi: SIMPLIFIED_ESCROW_ABI,
+    functionName: 'adminRefund',
+    args: [transferIdBytes32]
+  })
+
+  console.log('✅ Simplified escrow refund prepared')
+
+  return {
+    to: SIMPLIFIED_ESCROW_ADDRESS as `0x${string}`,
+    data,
+    value: BigInt(0) // No ETH value needed for refund
   }
 }

@@ -58,6 +58,8 @@ export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnbo
           accessToken = btoa(JSON.stringify(sessionData))
         }
 
+        setCurrentStep(`Claiming transfer ${i + 1} of ${totalClaims}...`)
+
         const response = await fetch('/api/admin/release', {
           method: 'POST',
           headers: {
@@ -72,11 +74,19 @@ export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnbo
 
         if (!response.ok) {
           console.error(`Failed to claim transfer ${claim.transferId}`)
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(`Failed to claim transfer: ${errorData.error || 'Unknown error'}`)
         }
 
-        // Small delay between claims
+        const result = await response.json()
+        console.log(`✅ Successfully claimed transfer ${claim.transferId}:`, result.txHash)
+
+        // Wait for transaction confirmation before proceeding to next claim
+        // This prevents nonce collisions and gas pricing issues
         if (i < totalClaims - 1) {
-          await new Promise(resolve => setTimeout(resolve, 300))
+          setCurrentStep(`Waiting for confirmation before next claim...`)
+          // Wait 3 seconds for blockchain confirmation (Base Sepolia is ~2-3 second block time)
+          await new Promise(resolve => setTimeout(resolve, 3000))
         }
       }
 

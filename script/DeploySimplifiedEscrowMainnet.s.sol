@@ -9,7 +9,7 @@ contract DeploySimplifiedEscrowMainnet is Script {
     address constant BASE_MAINNET_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     
     function run() external returns (SimplifiedEscrow) {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_WALLET_KEY");
         
         vm.startBroadcast(deployerPrivateKey);
         

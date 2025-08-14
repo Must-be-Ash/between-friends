@@ -152,6 +152,29 @@ contract SimplifiedEscrow is Ownable, ReentrancyGuard {
     }
     
     /**
+     * @notice Admin can refund unclaimed transfers after timeout (for automatic processing)
+     * @param transferId The transfer to refund
+     */
+    function adminRefund(bytes32 transferId) external onlyOwner nonReentrant {
+        Transfer storage transfer = transfers[transferId];
+        require(transfer.sender != address(0), "Transfer not found");
+        require(!transfer.claimed, "Already claimed");
+        require(!transfer.refunded, "Already refunded");
+        require(block.timestamp > transfer.expiryTime, "Not yet expired");
+        
+        // Mark as refunded
+        transfer.refunded = true;
+        
+        // Return USDC to original sender
+        require(
+            usdc.transfer(transfer.sender, transfer.amount),
+            "USDC transfer failed"
+        );
+        
+        emit Refunded(transferId, transfer.sender, transfer.amount);
+    }
+    
+    /**
      * @notice Get transfer details
      */
     function getTransfer(bytes32 transferId) external view returns (

@@ -9,7 +9,7 @@ contract DeploySimplifiedEscrow is Script {
     address constant BASE_SEPOLIA_USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     
     function run() external returns (SimplifiedEscrow) {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_WALLET_KEY");
         
         vm.startBroadcast(deployerPrivateKey);
         

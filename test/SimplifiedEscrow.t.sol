@@ -399,6 +399,93 @@ contract SimplifiedEscrowTest is Test {
         // Should be reasonable for Base network (45k gas = ~$0.0001-0.005)
         assertLt(gasUsed, 200000);
     }
+
+    function test_AdminRefund() public {
+        // Make deposit first
+        vm.prank(sender);
+        escrow.deposit(transferId, amount, recipientEmailHash, timeoutDays);
+        
+        // Fast forward past expiry (7 days + 1 second)
+        vm.warp(block.timestamp + (timeoutDays * 1 days) + 1);
+        
+        // Check balances before refund
+        uint256 senderBalanceBefore = usdc.balanceOf(sender);
+        uint256 contractBalanceBefore = usdc.balanceOf(address(escrow));
+        
+        // Admin refunds to original sender
+        vm.prank(admin);
+        escrow.adminRefund(transferId);
+        
+        // Verify refund succeeded
+        (, , , , bool claimed, bool refunded) = escrow.getTransfer(transferId);
+        assertFalse(claimed);
+        assertTrue(refunded);
+        
+        // Verify USDC returned to original sender
+        assertEq(usdc.balanceOf(sender), senderBalanceBefore + amount);
+        assertEq(usdc.balanceOf(address(escrow)), contractBalanceBefore - amount);
+    }
+    
+    function test_AdminRefundFailsBeforeExpiry() public {
+        // Make deposit first
+        vm.prank(sender);
+        escrow.deposit(transferId, amount, recipientEmailHash, timeoutDays);
+        
+        // Try to refund before expiry (should fail)
+        vm.prank(admin);
+        vm.expectRevert("Not yet expired");
+        escrow.adminRefund(transferId);
+    }
+    
+    function test_AdminRefundFailsIfAlreadyClaimed() public {
+        // Make deposit first
+        vm.prank(sender);
+        escrow.deposit(transferId, amount, recipientEmailHash, timeoutDays);
+        
+        // Claim first
+        vm.prank(admin);
+        escrow.adminRelease(transferId, recipientEmail, recipient);
+        
+        // Fast forward past expiry
+        vm.warp(block.timestamp + (timeoutDays * 1 days) + 1);
+        
+        // Try to refund after claiming (should fail)
+        vm.prank(admin);
+        vm.expectRevert("Already claimed");
+        escrow.adminRefund(transferId);
+    }
+    
+    function test_AdminRefundOnlyOwner() public {
+        // Make deposit first
+        vm.prank(sender);
+        escrow.deposit(transferId, amount, recipientEmailHash, timeoutDays);
+        
+        // Fast forward past expiry
+        vm.warp(block.timestamp + (timeoutDays * 1 days) + 1);
+        
+        // Try to refund as non-owner (should fail)
+        vm.prank(sender);
+        vm.expectRevert();
+        escrow.adminRefund(transferId);
+    }
+    
+    function test_GasUsageAdminRefund() public {
+        // Make deposit first
+        vm.prank(sender);
+        escrow.deposit(transferId, amount, recipientEmailHash, timeoutDays);
+        
+        // Fast forward past expiry
+        vm.warp(block.timestamp + (timeoutDays * 1 days) + 1);
+        
+        vm.prank(admin);
+        uint256 gasBefore = gasleft();
+        escrow.adminRefund(transferId);
+        uint256 gasUsed = gasBefore - gasleft();
+        
+        console.log("Gas used for admin refund:", gasUsed);
+        // Should be reasonable for Base network (~50k gas = ~$0.0001-0.005)
+        assertLt(gasUsed, 200000);
+    }
     
     // ===== INTEGRATION TESTS =====
     

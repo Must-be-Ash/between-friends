@@ -46,30 +46,7 @@ export function PendingClaims({ userId }: PendingClaimsProps) {
     fetchPendingClaims()
   }, [fetchPendingClaims])
 
-  const handleRefund = async (transferId: string) => {
-    try {
-      const response = await fetch('/api/refund', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transferId,
-          userId: userId,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to process refund')
-      }
-
-      // Refresh the list after refund
-      fetchPendingClaims()
-    } catch (error) {
-      console.error('Error processing refund:', error)
-      // TODO: Show error toast
-    }
-  }
+  // Refund functionality moved to admin-only automatic process after 7 days
 
   const getDaysRemaining = (expiryDate: Date) => {
     const now = new Date()
@@ -196,13 +173,6 @@ export function PendingClaims({ userId }: PendingClaimsProps) {
                   >
                     Copy Link
                   </button>
-                  <span className="text-gray-300">|</span>
-                  <button
-                    onClick={() => handleRefund(claim.transferId)}
-                    className="text-red-600 hover:text-red-700 text-xs font-medium"
-                  >
-                    Refund
-                  </button>
                 </div>
               </div>
 
@@ -237,7 +207,7 @@ export function PendingClaims({ userId }: PendingClaimsProps) {
           </div>
           <div className="ml-3">
             <p className="text-sm text-yellow-800">
-              These transfers are waiting to be claimed. You can refund them at any time before they expire.
+              These transfers are waiting to be claimed. They will automatically expire and refund after 7 days if not claimed.
             </p>
           </div>
         </div>

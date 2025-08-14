@@ -1,119 +1,141 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getPendingTransfer, updatePendingTransferStatus, createTransaction, getUserByEmail } from '@/lib/models'
+import { NextResponse } from 'next/server'
+import { getPendingTransfers, updatePendingTransferStatus, createTransaction, getUserByEmail } from '@/lib/models'
 import { sendRefundConfirmationEmail } from '@/lib/email'
-import { z } from 'zod'
+import { prepareSimplifiedEscrowRefund } from '@/lib/simplified-escrow'
+import { createWalletClient, createPublicClient, http } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
+import { base, baseSepolia } from 'viem/chains'
 
-// Validation schema
-const RefundRequestSchema = z.object({
-  transferId: z.string().min(1, 'Transfer ID is required'),
-  senderEmail: z.string().email('Invalid sender email'),
-})
+// Admin-only automatic refund endpoint for processing expired transfers
+// This should be called by a cron job or scheduled task, not by users
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const body = await request.json()
+    // Admin-only endpoint - simplified authentication
+    // This endpoint should only be called by trusted internal systems or cron jobs
+
+    // Get all pending transfers that have expired (older than 7 days)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const expiredTransfers = await getPendingTransfers()
     
-    // Validate request
-    const { transferId, senderEmail } = RefundRequestSchema.parse(body)
+    const transfersToRefund = expiredTransfers.filter(transfer => 
+      transfer.status === 'pending' && 
+      new Date(transfer.createdAt) < sevenDaysAgo
+    )
 
-    // Get pending transfer from database
-    const pendingTransfer = await getPendingTransfer(transferId)
+    console.log(`Found ${transfersToRefund.length} expired transfers to refund`)
 
-    if (!pendingTransfer) {
+    const results = []
+    const adminPrivateKey = process.env.ADMIN_WALLET_PRIVATE_KEY
+
+    if (!adminPrivateKey) {
       return NextResponse.json(
-        { error: 'Transfer not found' },
-        { status: 404 }
-      )
-    }
-
-    // Verify sender owns this transfer
-    if (pendingTransfer.senderEmail !== senderEmail) {
-      return NextResponse.json(
-        { error: 'Unauthorized: You can only refund your own transfers' },
-        { status: 403 }
-      )
-    }
-
-    // Check if transfer is still refundable
-    if (pendingTransfer.status !== 'pending') {
-      const statusMessages = {
-        claimed: 'This transfer has already been claimed and cannot be refunded',
-        refunded: 'This transfer has already been refunded',
-        expired: 'This transfer has expired'
-      }
-      
-      return NextResponse.json(
-        { error: statusMessages[pendingTransfer.status as keyof typeof statusMessages] || 'Transfer cannot be refunded' },
-        { status: 400 }
-      )
-    }
-
-    // Process refund on-chain
-    try {
-      // This would need to be implemented with proper transaction signing
-      // For now, we'll simulate the refund process
-      const refundTxHash = 'simulated-refund-hash'
-
-      // Update pending transfer status to refunded
-      await updatePendingTransferStatus(transferId, 'refunded', refundTxHash)
-
-      // Get sender display name for email and create transaction record
-      const sender = await getUserByEmail(senderEmail)
-      
-      // Create transaction history record for sender (if they have an account)
-      if (sender) {
-        await createTransaction({
-          userId: sender.userId,
-          userEmail: senderEmail,
-          type: 'refund',
-          counterpartyEmail: pendingTransfer.recipientEmail, // Who the refund was originally intended for
-          amount: `+${pendingTransfer.amount}`, // Positive amount for refund (money coming back)
-          txHash: refundTxHash,
-          transferId,
-          status: 'confirmed',
-        })
-      }
-      const senderDisplayName = sender?.displayName || senderEmail.split('@')[0]
-
-      // Send refund confirmation email
-      const emailResult = await sendRefundConfirmationEmail({
-        senderEmail,
-        senderName: senderDisplayName,
-        recipientEmail: pendingTransfer.recipientEmail,
-        amount: pendingTransfer.amount,
-        reason: 'Transfer refunded by sender',
-        refundTxHash
-      })
-
-      if (!emailResult.success) {
-        console.error('Failed to send refund confirmation email:', emailResult.error)
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: 'Refund processed successfully',
-        txHash: refundTxHash,
-        emailSent: emailResult.success
-      })
-    } catch (escrowError) {
-      console.error('Escrow refund error:', escrowError)
-      return NextResponse.json(
-        { error: 'Failed to process refund on blockchain. Please try again.' },
+        { error: 'Admin wallet not configured' },
         { status: 500 }
       )
     }
-  } catch (error) {
-    console.error('Refund processing error:', error)
+
+    // Set up admin wallet for on-chain refunds
+    const adminAccount = privateKeyToAccount(adminPrivateKey as `0x${string}`)
+    const chainConfig = process.env.NODE_ENV === 'development' ? baseSepolia : base
     
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
-        { status: 400 }
-      )
+    const publicClient = createPublicClient({
+      chain: chainConfig,
+      transport: http(),
+    })
+    
+    const adminClient = createWalletClient({
+      account: adminAccount,
+      chain: chainConfig,
+      transport: http(),
+    })
+
+    for (const transfer of transfersToRefund) {
+      try {
+        // Get sender information for refund
+        const sender = await getUserByEmail(transfer.senderEmail)
+        if (!sender) {
+          console.log(`Sender not found for transfer ${transfer.transferId}`)
+          continue
+        }
+
+        // Prepare on-chain refund transaction
+        const refundTx = prepareSimplifiedEscrowRefund({
+          transferId: transfer.transferId,
+          senderAddress: sender.walletAddress || ''
+        })
+
+        // Get current gas prices
+        const gasPrice = await publicClient.getGasPrice()
+        const feeData = await publicClient.estimateFeesPerGas()
+
+        // Execute refund on-chain (admin pays gas)
+        const txHash = await adminClient.sendTransaction({
+          to: refundTx.to,
+          data: refundTx.data,
+          value: refundTx.value,
+          gas: BigInt(200000),
+          maxFeePerGas: feeData.maxFeePerGas ? (feeData.maxFeePerGas * BigInt(12)) / BigInt(10) : gasPrice * BigInt(2),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ? (feeData.maxPriorityFeePerGas * BigInt(12)) / BigInt(10) : BigInt(1000000000),
+        })
+
+        // Update database status
+        await updatePendingTransferStatus(transfer.transferId, 'refunded', txHash)
+
+        // Create transaction history record for sender
+        await createTransaction({
+          userId: sender.userId,
+          userEmail: sender.email,
+          type: 'refund',
+          counterpartyEmail: transfer.recipientEmail,
+          amount: `+${transfer.amount}`, // Positive for money returning
+          txHash,
+          transferId: transfer.transferId,
+          status: 'confirmed',
+        })
+
+        // Send refund notification email
+        const senderDisplayName = sender.displayName || sender.email.split('@')[0]
+        const emailResult = await sendRefundConfirmationEmail({
+          senderEmail: sender.email,
+          senderName: senderDisplayName,
+          recipientEmail: transfer.recipientEmail,
+          amount: transfer.amount,
+          reason: 'Transfer automatically refunded after 7 days (unclaimed)',
+          refundTxHash: txHash
+        })
+
+        results.push({
+          transferId: transfer.transferId,
+          success: true,
+          txHash,
+          emailSent: emailResult.success
+        })
+
+        console.log(`Successfully refunded transfer ${transfer.transferId}`)
+
+      } catch (error) {
+        console.error(`Failed to refund transfer ${transfer.transferId}:`, error)
+        results.push({
+          transferId: transfer.transferId,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
     }
-    
+
+    return NextResponse.json({
+      success: true,
+      message: `Processed ${transfersToRefund.length} expired transfers`,
+      refundedCount: results.filter(r => r.success).length,
+      failedCount: results.filter(r => !r.success).length,
+      results
+    })
+
+  } catch (error) {
+    console.error('Automatic refund processing error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error during automatic refund processing' },
       { status: 500 }
     )
   }

@@ -135,11 +135,92 @@ export async function sendRefundNotificationEmail(params: {
   refundTxHash?: string
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    // This would typically use a service like SendGrid, AWS SES, etc.
-    console.log('Sending refund confirmation email:', params)
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || 'info@btwnfriends.com'
+    const senderName = params.senderName || params.senderEmail.split('@')[0]
+    
+    const subject = `Refund processed: $${params.amount} USDC returned`
+    
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 48px 32px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h1 style="color: #1a1a1a; font-size: 28px; font-weight: 700; margin: 0 0 32px 0; line-height: 1.2; letter-spacing: -0.5px;">
+            Refund Processed
+          </h1>
+        </div>
+        
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 32px 0;">
+          <div style="margin-bottom: 16px;">
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Amount Refunded</div>
+            <div style="color: #1a1a1a; font-size: 18px; font-weight: 600;">$${params.amount} USDC</div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Original Recipient</div>
+            <div style="color: #1a1a1a; font-size: 16px; font-weight: 500;">${params.recipientEmail}</div>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Reason</div>
+            <div style="color: #1a1a1a; font-size: 14px; font-weight: 500;">${params.reason}</div>
+          </div>
+          
+          ${params.refundTxHash ? `
+          <div>
+            <div style="color: #6b7280; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Transaction</div>
+            <div style="color: #1a1a1a; font-size: 14px; font-family: 'SF Mono', Monaco, Consolas, monospace;">
+              <a href="https://basescan.org/tx/${params.refundTxHash}" style="color: #374151; text-decoration: underline;">
+                ${params.refundTxHash.slice(0, 12)}...${params.refundTxHash.slice(-8)}
+              </a>
+            </div>
+          </div>
+          ` : ''}
+        </div>
+        
+        <div style="text-align: center; margin-top: 24px;">
+          <p style="color: #9ca3af; font-size: 13px; margin: 0; line-height: 1.4;">
+            Hi ${senderName}, the funds have been automatically returned to your wallet.<br>
+            via Between Friends
+          </p>
+        </div>
+      </div>
+    `
+    
+    const text = `
+Refund Processed
+
+Hi ${senderName},
+
+Your $${params.amount} USDC transfer to ${params.recipientEmail} has been refunded.
+
+Reason: ${params.reason}
+
+The funds have been automatically returned to your wallet.
+
+${params.refundTxHash ? `Transaction: https://basescan.org/tx/${params.refundTxHash}` : ''}
+
+via Between Friends
+    `
+    
+    console.log('📧 SENDING REFUND NOTIFICATION EMAIL:', {
+      to: params.senderEmail,
+      from: fromAddress,
+      subject,
+      amount: params.amount,
+      recipientEmail: params.recipientEmail
+    })
+    
+    const response = await resend.emails.send({
+      from: fromAddress,
+      to: params.senderEmail,
+      subject,
+      html,
+      text,
+    })
+    
+    console.log('✅ REFUND EMAIL SENT SUCCESSFULLY:', { emailId: response.data?.id })
     return { success: true }
   } catch (error) {
-    console.error('Error sending refund confirmation email:', error)
+    console.error('❌ ERROR SENDING REFUND EMAIL:', error)
     return { success: false, error: 'Failed to send email' }
   }
 }

@@ -374,6 +374,20 @@ export async function getPendingTransfersByRecipient(recipientEmail: string): Pr
   }
 }
 
+export async function getPendingTransfers(): Promise<Transfer[]> {
+  try {
+    const db = await getDatabase()
+    const transfers = await db.collection('pending_transfers')
+      .find({ status: { $in: ['pending', 'unclaimed'] } })
+      .sort({ createdAt: -1 })
+      .toArray()
+    return transfers as unknown as Transfer[]
+  } catch (error) {
+    console.error('Error getting pending transfers:', error)
+    return []
+  }
+}
+
 export async function getTransactionsByUserWithFilters(
   userEmail: string,
   limit: number,
