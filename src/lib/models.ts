@@ -260,6 +260,11 @@ export async function updateUserByEmail(email: string, updates: Partial<User>): 
 
 export async function searchContacts(userId: string, query: string): Promise<Contact[]> {
   try {
+    // Simple length limit to prevent ReDoS attacks
+    if (!query || query.length > 50) {
+      return []
+    }
+    
     const db = await getDatabase()
     const contacts = await db.collection('contacts')
       .find({ 

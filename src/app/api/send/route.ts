@@ -91,8 +91,7 @@ export async function POST(request: NextRequest) {
     // Lookup recipient to determine transfer type
     const recipient = await lookupRecipientServer(recipientEmail)
     console.log('🔍 RECIPIENT LOOKUP RESULT:', {
-      email: recipientEmail,
-      recipient,
+      email: '[EMAIL_REDACTED]',
       transferType: recipient.transferType,
       exists: recipient.exists,
       hasWallet: !!recipient.walletAddress
@@ -134,12 +133,9 @@ export async function POST(request: NextRequest) {
         }
         
         console.log('🔍 DIRECT TRANSFER TRANSACTION:', {
-          original: {
-            to: transaction.to,
-            value: transaction.value?.toString(),
-            type: transaction.type
-          },
-          serialized: serializedTransaction
+          to: '[ADDRESS_REDACTED]',
+          value: transaction.value?.toString(),
+          type: transaction.type
         })
 
         // Transaction record will be created in /send/complete after successful signing
