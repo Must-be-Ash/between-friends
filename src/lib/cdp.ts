@@ -9,8 +9,7 @@ export interface CDPConfig {
 
 export function getCDPConfig(): CDPConfig {
   const projectId = process.env.NEXT_PUBLIC_CDP_PROJECT_ID
-  const isDevelopment = process.env.NODE_ENV === 'development'
-  const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || (isDevelopment ? 'https://sepolia.base.org' : 'https://mainnet.base.org')
+  const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || (process.env.NODE_ENV === 'development' ? 'https://sepolia.base.org' : 'https://mainnet.base.org')
   
   if (!projectId) {
     throw new Error('Missing CDP_PROJECT_ID configuration. Please check your environment variables.')
@@ -19,7 +18,7 @@ export function getCDPConfig(): CDPConfig {
   return {
     projectId,
     rpcUrl,
-    chainId: isDevelopment ? 84532 : 8453 // Base Sepolia : Base Mainnet
+    chainId: CURRENT_NETWORK
   }
 }
 
@@ -53,11 +52,28 @@ export const CONTRACT_ADDRESSES = {
   },
   SIMPLIFIED_ESCROW: {
     8453: '0x0000000000000000000000000000000000000000', // Base Mainnet - to be deployed
-    84532: '0x5a61Cc9206f82e2bAFD9bde1729E32E27bb737E9', // Base Sepolia - deployed
+    84532: '0x1C182dDa2DE61c349bc516Fa8a63a371cA4CE184', // Base Sepolia - deployed
   }
 }
 
-export const CURRENT_NETWORK = process.env.NODE_ENV === 'development' ? 84532 : 8453
+// Determine network based on environment variables, not just NODE_ENV
+export const CURRENT_NETWORK = (() => {
+  const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+  const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+  
+  // If chain ID is explicitly configured, use it
+  if (configuredChainId) {
+    return parseInt(configuredChainId)
+  }
+  
+  // If RPC URL contains sepolia, use testnet
+  if (configuredRpcUrl?.includes('sepolia')) {
+    return 84532
+  }
+  
+  // Default fallback based on NODE_ENV
+  return process.env.NODE_ENV === 'development' ? 84532 : 8453
+})()
 
 // Default configurations that can be imported directly
 export const CDP_CONFIG = {
