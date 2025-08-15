@@ -69,7 +69,7 @@ ${message ? `Message: "${message}"\n\n` : ''}
 
 Claim your funds: ${claimUrl}
 
-This link expires in 7 days.
+Sign in to claim your funds. This transfer expires in 7 days.
   `
   
   return { subject, html, text }

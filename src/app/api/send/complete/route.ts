@@ -142,9 +142,8 @@ export async function POST(request: NextRequest) {
         // Get the transfer details
         const pendingTransfer = await getPendingTransfer(transferId)
         if (pendingTransfer) {
-          // Generate simplified claim URL (no token needed - CDP auth handles security)
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.btwnfriends.com'
-          const claimUrl = `${baseUrl}/claim?transferId=${transferId}`
+          // Use main domain URL (no unique parameters needed)
+          const claimUrl = 'https://www.btwnfriends.com'
           
           console.log('📧 SENDING ESCROW NOTIFICATION EMAIL:', {
             recipientEmail,
