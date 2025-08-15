@@ -5,15 +5,47 @@ import { base, baseSepolia } from 'viem/chains'
 const USDC_BASE_MAINNET = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
 const USDC_BASE_SEPOLIA = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
 
-// Get the appropriate chain and USDC address
-const isDevelopment = process.env.NODE_ENV === 'development'
-const chain = isDevelopment ? baseSepolia : base
-const usdcAddress = isDevelopment ? USDC_BASE_SEPOLIA : USDC_BASE_MAINNET
+// Get the appropriate chain and USDC address based on environment variables
+const getNetworkConfig = () => {
+  const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+  const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+  
+  // If chain ID is explicitly configured, use it
+  if (configuredChainId) {
+    const chainId = parseInt(configuredChainId)
+    return {
+      chain: chainId === 84532 ? baseSepolia : base,
+      usdcAddress: chainId === 84532 ? USDC_BASE_SEPOLIA : USDC_BASE_MAINNET,
+      isTestnet: chainId === 84532
+    }
+  }
+  
+  // If RPC URL contains sepolia, use testnet
+  if (configuredRpcUrl?.includes('sepolia')) {
+    return {
+      chain: baseSepolia,
+      usdcAddress: USDC_BASE_SEPOLIA,
+      isTestnet: true
+    }
+  }
+  
+  // Default fallback based on NODE_ENV
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  return {
+    chain: isDevelopment ? baseSepolia : base,
+    usdcAddress: isDevelopment ? USDC_BASE_SEPOLIA : USDC_BASE_MAINNET,
+    isTestnet: isDevelopment
+  }
+}
+
+const networkConfig = getNetworkConfig()
+const chain = networkConfig.chain
+const usdcAddress = networkConfig.usdcAddress
 
 // Create public client
 const publicClient = createPublicClient({
   chain,
-  transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || (isDevelopment ? 'https://sepolia.base.org' : 'https://mainnet.base.org'))
+  transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || (networkConfig.isTestnet ? 'https://sepolia.base.org' : 'https://mainnet.base.org'))
 })
 
 // USDC has 6 decimals
