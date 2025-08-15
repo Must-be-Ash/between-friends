@@ -204,6 +204,21 @@ export function prepareUSDCApproval(senderAddress: string, spender: string, amou
   const amountWei = parseUnits(amount, USDC_DECIMALS)
   const data = `0x095ea7b3${spender.slice(2).padStart(64, '0')}${amountWei.toString(16).padStart(64, '0')}`
   
+  console.log('🔍 PREPARING USDC APPROVAL:', {
+    senderAddress,
+    spender,
+    amount,
+    amountWei: amountWei.toString(),
+    usdcAddress,
+    chainId: chain.id,
+    chain: chain.name,
+    networkConfig: (() => {
+      const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+      const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+      return { configuredChainId, configuredRpcUrl }
+    })()
+  })
+  
   return {
     to: usdcAddress,
     value: BigInt(0),
