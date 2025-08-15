@@ -38,7 +38,13 @@ export function formatRelativeTime(date: Date): string {
 }
 
 export function getBlockExplorerUrl(txHash: string): string {
-  return `https://basescan.org/tx/${txHash}`
+  // Use environment to determine the correct Basescan URL
+  const isTestnet = process.env.NODE_ENV === 'development' || 
+                   process.env.NEXT_PUBLIC_BASE_RPC_URL?.includes('sepolia') ||
+                   process.env.NEXT_PUBLIC_BASE_CHAIN_ID === '84532'
+  
+  const baseUrl = isTestnet ? 'https://sepolia.basescan.org' : 'https://basescan.org'
+  return `${baseUrl}/tx/${txHash}`
 }
 
 export async function copyToClipboard(text: string): Promise<boolean> {

@@ -49,13 +49,8 @@ export function ClaimOnboarding({ pendingClaims, userId, onComplete }: ClaimOnbo
         try {
           accessToken = await getAccessToken()
         } catch (tokenError) {
-          console.warn('CDP access token not available, using fallback authentication')
-          // Create fallback session token
-          const sessionData = {
-            userId: userId,
-            timestamp: Date.now()
-          }
-          accessToken = btoa(JSON.stringify(sessionData))
+          console.error('CDP access token not available:', tokenError)
+          throw new Error('Authentication failed. Please sign in again to continue claiming your funds.')
         }
 
         setCurrentStep(`Claiming transfer ${i + 1} of ${totalClaims}...`)

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getPendingTransfer, updatePendingTransferStatus, createTransaction, getUserByUserId } from '@/lib/models'
+import { getPendingTransfer, updatePendingTransferStatus, createTransaction, getUserByUserId, updateTransaction } from '@/lib/models'
 import { prepareSimplifiedEscrowAdminRelease } from '@/lib/simplified-escrow'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { validateCDPAuth, requireUserMatch, requireEmailMatch } from '@/lib/auth'
+import { validateCDPAuth, requireUserMatch, requireEmailMatch, extractEmailFromCDPUser, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 import { Address, createWalletClient, createPublicClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
     const { transferId, userId } = AdminReleaseRequestSchema.parse(body)
     
     // Verify the authenticated user matches the request
-    if (!requireUserMatch(authResult.user.userId, userId)) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || !requireUserMatch(authenticatedUserId, userId)) {
       return NextResponse.json(
         { error: 'Authentication mismatch - you can only claim your own transfers' },
         { status: 403 }
@@ -83,16 +84,21 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Additional security: Verify the authenticated user's email matches the transfer recipient  
-    // Note: Email verification temporarily disabled due to CDP v0.0.19 API changes
-    // TODO: Re-enable proper email verification once we have proper access tokens working
-    // const authenticatedEmail = authResult.user.authenticationMethods?.email?.email
-    // if (authenticatedEmail && !requireEmailMatch(authenticatedEmail, transfer.recipientEmail)) {
-    //   return NextResponse.json(
-    //     { error: 'Authenticated email does not match transfer recipient' },
-    //     { status: 403 }
-    //   )
-    // }
+    // SECURITY: Verify the authenticated user's email matches the transfer recipient
+    const authenticatedEmail = extractEmailFromCDPUser(authResult.user)
+    if (!authenticatedEmail) {
+      return NextResponse.json(
+        { error: 'Unable to verify authenticated email address' },
+        { status: 403 }
+      )
+    }
+    
+    if (!requireEmailMatch(authenticatedEmail, transfer.recipientEmail)) {
+      return NextResponse.json(
+        { error: 'Authenticated email does not match transfer recipient' },
+        { status: 403 }
+      )
+    }
     
     // No claim token verification needed - CDP authentication is our security layer
     
@@ -173,6 +179,12 @@ export async function POST(request: NextRequest) {
         txHash: txHash,
         transferId,
         status: 'confirmed',
+      })
+
+      // Update sender's transaction status from 'pending' to 'confirmed'
+      await updateTransaction(transferId, {
+        status: 'confirmed',
+        txHash: txHash
       })
 
       return NextResponse.json({

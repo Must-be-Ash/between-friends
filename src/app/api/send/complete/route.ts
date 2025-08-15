@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createTransaction, getUserByUserId, getUserByEmail, getPendingTransfer } from '@/lib/models'
 import { sendClaimNotificationEmail, sendDirectTransferNotificationEmail } from '@/lib/email'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 
 // Force dynamic rendering for this API route
@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
     const { userId, txHash, transferType, recipient, amount, transferId } = CompleteTransferSchema.parse(body)
     
     // Ensure user can only complete their own transactions
-    if (authResult.user.userId !== userId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
       return NextResponse.json(
         { error: 'You can only complete your own transactions' },
         { status: 403 }

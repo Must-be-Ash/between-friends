@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTransactionsByUserWithFilters, getUserByUserId } from '@/lib/models'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Ensure user can only access their own transaction history
-    if (authResult.user.userId !== userId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
       return NextResponse.json(
         { error: 'You can only access your own transaction history' },
         { status: 403 }

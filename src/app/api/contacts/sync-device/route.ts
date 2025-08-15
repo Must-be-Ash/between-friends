@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { bulkCreateContacts, getContacts } from '@/lib/models'
 import { CreateContactData } from '@/types'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 
 const DeviceContactSchema = z.object({
@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
     const validatedData = DeviceSyncSchema.parse(body)
     
     // Ensure user can only sync contacts for themselves
-    if (authResult.user.userId !== validatedData.ownerUserId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== validatedData.ownerUserId) {
       return NextResponse.json(
         { error: 'You can only sync contacts for yourself' },
         { status: 403 }

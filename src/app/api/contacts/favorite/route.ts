@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { toggleContactFavorite } from '@/lib/models'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 
 const FavoriteToggleSchema = z.object({
@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
     const validatedData = FavoriteToggleSchema.parse(body)
     
     // Ensure user can only toggle favorites for their own contacts
-    if (authResult.user.userId !== validatedData.ownerUserId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== validatedData.ownerUserId) {
       return NextResponse.json(
         { error: 'You can only toggle favorites for your own contacts' },
         { status: 403 }

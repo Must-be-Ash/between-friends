@@ -8,7 +8,7 @@ import {
   bulkCreateContacts 
 } from '@/lib/models'
 import { CreateContactData } from '@/types'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 
 // Validation schemas
@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Ensure user can only access their own contacts
-    if (authResult.user.userId !== ownerUserId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== ownerUserId) {
       return NextResponse.json(
         { error: 'You can only access your own contacts' },
         { status: 403 }
@@ -125,7 +126,8 @@ export async function POST(request: NextRequest) {
       const validatedData = BulkCreateSchema.parse(body)
       
       // Ensure user can only create contacts for themselves
-      if (authResult.user.userId !== validatedData.ownerUserId) {
+      const authenticatedUserIdBulk = extractUserIdFromCDPUser(authResult.user)
+      if (!authenticatedUserIdBulk || authenticatedUserIdBulk !== validatedData.ownerUserId) {
         return NextResponse.json(
           { error: 'You can only create contacts for yourself' },
           { status: 403 }
@@ -150,7 +152,8 @@ export async function POST(request: NextRequest) {
       const validatedData = CreateContactSchema.parse(body)
       
       // Ensure user can only create contacts for themselves
-      if (authResult.user.userId !== validatedData.ownerUserId) {
+      const authenticatedUserIdSingle = extractUserIdFromCDPUser(authResult.user)
+      if (!authenticatedUserIdSingle || authenticatedUserIdSingle !== validatedData.ownerUserId) {
         return NextResponse.json(
           { error: 'You can only create contacts for yourself' },
           { status: 403 }
@@ -229,7 +232,8 @@ export async function PUT(request: NextRequest) {
     }
     
     // Ensure user can only update their own contacts
-    if (authResult.user.userId !== ownerUserId) {
+    const authenticatedUserIdUpdate = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserIdUpdate || authenticatedUserIdUpdate !== ownerUserId) {
       return NextResponse.json(
         { error: 'You can only update your own contacts' },
         { status: 403 }
@@ -284,7 +288,8 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Ensure user can only delete their own contacts
-    if (authResult.user.userId !== ownerUserId) {
+    const authenticatedUserIdDelete = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserIdDelete || authenticatedUserIdDelete !== ownerUserId) {
       return NextResponse.json(
         { error: 'You can only delete your own contacts' },
         { status: 403 }

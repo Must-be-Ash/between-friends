@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CdpClient } from '@coinbase/cdp-sdk'
 
-// CDP User interface to match the endUser validation response
-interface CDPUser {
-  userId: string
-  email?: string
-}
+// We work directly with the CDP EndUser type through unknown for flexibility
 
 // Initialize CDP client for server-side authentication validation
 let cdpClient: CdpClient | null = null
@@ -69,7 +65,7 @@ export async function validateCDPAuth(request: NextRequest) {
     })
 
     return { 
-      user: endUser, 
+      user: endUser as unknown, 
       error: null, 
       status: 200 
     }
@@ -93,7 +89,7 @@ export async function validateCDPAuth(request: NextRequest) {
  */
 export async function withAuth(
   request: NextRequest,
-  handler: (request: NextRequest, user: CDPUser) => Promise<Response>
+  handler: (request: NextRequest, user: unknown) => Promise<Response>
 ): Promise<Response> {
   const authResult = await validateCDPAuth(request)
   
@@ -121,4 +117,47 @@ export function requireUserMatch(authenticatedUserId: string, requestedUserId: s
  */
 export function requireEmailMatch(authenticatedEmail: string, requestedEmail: string): boolean {
   return authenticatedEmail.toLowerCase() === requestedEmail.toLowerCase()
+}
+
+/**
+ * Safely extract userId from CDP endUser object
+ */
+export function extractUserIdFromCDPUser(user: Record<string, unknown> | unknown): string | null {
+  try {
+    const userObj = user as Record<string, unknown>
+    const userId = userObj?.userId
+    return userId ? String(userId) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Safely extract email from CDP endUser object
+ */
+export function extractEmailFromCDPUser(user: Record<string, unknown> | unknown): string | null {
+  try {
+    const userObj = user as Record<string, unknown>
+    
+    // authenticationMethods is an array of objects like: [{ email: "user@example.com", type: "email" }]
+    const authMethods = userObj?.authenticationMethods as Array<Record<string, unknown>> | undefined
+    
+    if (authMethods && Array.isArray(authMethods)) {
+      // Find the email authentication method
+      const emailMethod = authMethods.find(method => method.type === 'email')
+      if (emailMethod?.email) {
+        return String(emailMethod.email).toLowerCase()
+      }
+    }
+    
+    // Fallback: check if email is directly on the user object
+    if (userObj?.email) {
+      return String(userObj.email).toLowerCase()
+    }
+    
+    return null
+  } catch (error) {
+    console.error('🔍 ERROR IN extractEmailFromCDPUser:', error)
+    return null
+  }
 }

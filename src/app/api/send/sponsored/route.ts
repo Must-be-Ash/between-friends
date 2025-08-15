@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createTransaction, getUserByUserId } from '@/lib/models'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 
 // This route handles gas-sponsored USDC transfers
@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
     } = SponsoredSendSchema.parse(body)
     
     // Ensure user can only send from their own account
-    if (authResult.user.userId !== userId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
       return NextResponse.json(
         { error: 'You can only send funds from your own account' },
         { status: 403 }

@@ -8,32 +8,6 @@ export interface RecipientInfo {
   transferType: 'direct' | 'escrow'
 }
 
-export async function lookupRecipient(email: string): Promise<RecipientInfo> {
-  try {
-    const response = await fetch('/api/recipients/lookup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to lookup recipient')
-    }
-    
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('Error looking up recipient:', error)
-    // Default to escrow if lookup fails
-    return {
-      email,
-      exists: false,
-      transferType: 'escrow'
-    }
-  }
-}
 
 export function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -44,19 +18,6 @@ export function getTransferType(recipientExists: boolean, recipientHasWallet: bo
   return recipientExists && recipientHasWallet ? 'direct' : 'escrow'
 }
 
-export async function lookupMultipleRecipients(emails: string[]): Promise<RecipientInfo[]> {
-  try {
-    const results = await Promise.all(emails.map(email => lookupRecipient(email)))
-    return results
-  } catch (error) {
-    console.error('Error looking up multiple recipients:', error)
-    return emails.map(email => ({
-      email,
-      exists: false,
-      transferType: 'escrow' as const
-    }))
-  }
-}
 
 // Server-side versions for API routes (don't make HTTP calls)
 import { getUserByEmail } from './models'

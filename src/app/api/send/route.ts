@@ -4,7 +4,7 @@ import { prepareUSDCTransfer, hasSufficientBalance, hasSufficientAllowance, prep
 import { generateTransferId as generateSimpleTransferId } from '@/lib/simplified-escrow'
 import { createPendingTransfer, getUserByUserId } from '@/lib/models'
 import { calculateExpiryDate } from '@/lib/cdp'
-import { validateCDPAuth } from '@/lib/auth'
+import { validateCDPAuth, extractUserIdFromCDPUser } from '@/lib/auth'
 import { z } from 'zod'
 import { Address } from 'viem'
 
@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
     const { userId, senderAddress, recipientEmail, amount } = SendRequestSchema.parse(body)
     
     // Ensure user can only send from their own account
-    if (authResult.user.userId !== userId) {
+    const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
+    if (!authenticatedUserId || authenticatedUserId !== userId) {
       return NextResponse.json(
         { error: 'You can only send funds from your own account' },
         { status: 403 }

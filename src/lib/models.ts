@@ -476,3 +476,20 @@ export async function getTransactionsByUserWithFilters(
     return []
   }
 }
+
+export async function updateTransaction(
+  transferId: string, 
+  updates: Partial<Transaction>
+): Promise<boolean> {
+  try {
+    const db = await getDatabase()
+    await db.collection('transactions').updateMany(
+      { transferId },
+      { $set: updates }
+    )
+    return true
+  } catch (error) {
+    console.error('Error updating transaction:', error)
+    return false
+  }
+}
