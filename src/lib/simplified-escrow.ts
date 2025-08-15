@@ -48,20 +48,35 @@ const SIMPLIFIED_ESCROW_ABI = [
   }
 ] as const
 
-// Contract addresses
+// Contract addresses - use consistent network detection logic
 function getSimplifiedEscrowAddress(): string {
-  const isDevelopment = process.env.NODE_ENV === 'development'
+  const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+  const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
   
-  if (isDevelopment) {
-    // Testnet: Will be deployed separately
+  // Determine if we're on testnet using the same logic as other files
+  let isTestnet = false
+  
+  if (configuredChainId) {
+    isTestnet = parseInt(configuredChainId) === 84532
+  } else if (configuredRpcUrl?.includes('sepolia')) {
+    isTestnet = true
+  } else {
+    isTestnet = process.env.NODE_ENV === 'development'
+  }
+  
+  if (isTestnet) {
+    // Base Sepolia testnet
     return process.env.NEXT_PUBLIC_SIMPLIFIED_ESCROW_ADDRESS || '0x0000000000000000000000000000000000000000'
   } else {
-    // Mainnet: Will be deployed separately
+    // Base mainnet
     return process.env.NEXT_PUBLIC_SIMPLIFIED_ESCROW_ADDRESS_MAINNET || '0x0000000000000000000000000000000000000000'
   }
 }
 
 export const SIMPLIFIED_ESCROW_ADDRESS = getSimplifiedEscrowAddress()
+
+// Debug log the escrow address
+console.log('🏦 SIMPLIFIED ESCROW ADDRESS:', SIMPLIFIED_ESCROW_ADDRESS)
 
 export function generateTransferId(): string {
   return `transfer_${Date.now()}_${Math.random().toString(36).substring(2)}`
