@@ -75,8 +75,6 @@ function getSimplifiedEscrowAddress(): string {
 
 export const SIMPLIFIED_ESCROW_ADDRESS = getSimplifiedEscrowAddress()
 
-// Debug log the escrow address
-console.log('🏦 SIMPLIFIED ESCROW ADDRESS:', SIMPLIFIED_ESCROW_ADDRESS)
 
 export function generateTransferId(): string {
   return `transfer_${Date.now()}_${Math.random().toString(36).substring(2)}`
@@ -119,11 +117,27 @@ export function prepareSimplifiedEscrowDeposit(params: {
   
   console.log('✅ Simplified escrow deposit prepared')
   
+  // Use consistent network detection logic
+  const getChainId = () => {
+    const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+    const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+    
+    if (configuredChainId) {
+      return parseInt(configuredChainId)
+    }
+    
+    if (configuredRpcUrl?.includes('sepolia')) {
+      return 84532
+    }
+    
+    return process.env.NODE_ENV === 'development' ? 84532 : 8453
+  }
+  
   return {
     to: SIMPLIFIED_ESCROW_ADDRESS as `0x${string}`,
     value: BigInt(0),
     data: data as `0x${string}`,
-    chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
+    chainId: getChainId(),
     type: "eip1559"
   }
 }
@@ -147,11 +161,27 @@ export async function prepareSimplifiedEscrowAdminRelease(params: {
   
   console.log('✅ Simplified admin release prepared')
   
+  // Use consistent network detection logic
+  const getChainId = () => {
+    const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+    const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+    
+    if (configuredChainId) {
+      return parseInt(configuredChainId)
+    }
+    
+    if (configuredRpcUrl?.includes('sepolia')) {
+      return 84532
+    }
+    
+    return process.env.NODE_ENV === 'development' ? 84532 : 8453
+  }
+  
   return {
     to: SIMPLIFIED_ESCROW_ADDRESS as `0x${string}`,
     value: BigInt(0),
     data: data as `0x${string}`,
-    chainId: process.env.NODE_ENV === 'development' ? 84532 : 8453,
+    chainId: getChainId(),
     type: "eip1559"
   }
 }

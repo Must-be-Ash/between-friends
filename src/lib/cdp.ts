@@ -9,7 +9,18 @@ export interface CDPConfig {
 
 export function getCDPConfig(): CDPConfig {
   const projectId = process.env.NEXT_PUBLIC_CDP_PROJECT_ID
-  const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || (process.env.NODE_ENV === 'development' ? 'https://sepolia.base.org' : 'https://mainnet.base.org')
+  // Use environment variable or fallback based on configured chain ID
+  const getDefaultRpcUrl = () => {
+    const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+    
+    if (configuredChainId) {
+      return parseInt(configuredChainId) === 84532 ? 'https://sepolia.base.org' : 'https://mainnet.base.org'
+    }
+    
+    return process.env.NODE_ENV === 'development' ? 'https://sepolia.base.org' : 'https://mainnet.base.org'
+  }
+  
+  const rpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL || getDefaultRpcUrl()
   
   if (!projectId) {
     throw new Error('Missing CDP_PROJECT_ID configuration. Please check your environment variables.')
@@ -220,6 +231,18 @@ export function getCDPNetworkName(chainId?: number): 'base' | 'base-sepolia' {
     case 84532:
       return 'base-sepolia'
     default:
+      // Use consistent fallback logic
+      const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+      const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+      
+      if (configuredChainId) {
+        return parseInt(configuredChainId) === 84532 ? 'base-sepolia' : 'base'
+      }
+      
+      if (configuredRpcUrl?.includes('sepolia')) {
+        return 'base-sepolia'
+      }
+      
       return process.env.NODE_ENV === 'development' ? 'base-sepolia' : 'base'
   }
 }

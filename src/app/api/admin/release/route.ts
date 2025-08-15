@@ -130,7 +130,23 @@ export async function POST(request: NextRequest) {
     try {
       // Set up admin wallet and public client for gas estimation
       const adminAccount = privateKeyToAccount(ADMIN_PRIVATE_KEY as `0x${string}`)
-      const chainConfig = process.env.NODE_ENV === 'development' ? baseSepolia : base
+      // Use consistent network detection logic
+      const getChainConfig = () => {
+        const configuredChainId = process.env.NEXT_PUBLIC_BASE_CHAIN_ID
+        const configuredRpcUrl = process.env.NEXT_PUBLIC_BASE_RPC_URL
+        
+        if (configuredChainId) {
+          return parseInt(configuredChainId) === 84532 ? baseSepolia : base
+        }
+        
+        if (configuredRpcUrl?.includes('sepolia')) {
+          return baseSepolia
+        }
+        
+        return process.env.NODE_ENV === 'development' ? baseSepolia : base
+      }
+      
+      const chainConfig = getChainConfig()
       
       const publicClient = createPublicClient({
         chain: chainConfig,
