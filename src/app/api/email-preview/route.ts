@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       const senderName = 'Jane'
       const senderEmail = 'jane@example.com'
       const amount = '15.75'
-      const claimUrl = 'https://www.btwnfriends.com/claim?transferId=sample_123&token=abc123'
+      const claimUrl = 'https://www.btwnfriends.com'
       
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 48px 32px; background-color: #ffffff; border: 1px solid #f0f0f0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
