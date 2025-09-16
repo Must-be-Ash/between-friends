@@ -9,6 +9,7 @@ import { NavigationDock } from '@/components/navigation/NavigationDock'
 import { QuickActions } from './QuickActions'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { ClaimOnboarding } from '@/components/onboarding/ClaimOnboarding'
+import { getStorageItem, removeStorageItem } from '@/lib/storage'
 
 interface UserProfile {
   userId: string
@@ -100,8 +101,8 @@ export function Dashboard() {
         // This can happen for existing CDP users
         console.log('User not found in our database, creating profile...')
         
-        // Try to get email from localStorage (stored during auth)
-        const storedEmail = localStorage.getItem('cdp_user_email')
+        // Try to get email from storage (stored during auth)
+        const storedEmail = getStorageItem('cdp_user_email')
         
         if (storedEmail && evmAddress) {
           // Auto-create profile for existing CDP user
@@ -168,7 +169,7 @@ export function Dashboard() {
     try {
       await signOut()
       // Clean up stored email
-      localStorage.removeItem('cdp_user_email')
+      removeStorageItem('cdp_user_email')
     } catch (error) {
       console.error('Logout failed:', error)
     } finally {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Download, X, Smartphone } from 'lucide-react'
+import { getStorageItem, setStorageItem } from '@/lib/storage'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -31,8 +32,8 @@ export function InstallPrompt() {
         return
       }
 
-      // Check localStorage to see if user previously dismissed
-      const dismissed = localStorage.getItem('pwa-install-dismissed')
+      // Check storage to see if user previously dismissed
+      const dismissed = getStorageItem('pwa-install-dismissed')
       if (dismissed) {
         const dismissedDate = new Date(dismissed)
         const now = new Date()
@@ -118,7 +119,7 @@ export function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    localStorage.setItem('pwa-install-dismissed', new Date().toISOString())
+    setStorageItem('pwa-install-dismissed', new Date().toISOString())
   }
 
   // Don't show if already installed or if prompt shouldn't be shown

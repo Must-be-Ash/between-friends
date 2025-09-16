@@ -7,6 +7,7 @@ import { OTPInput } from './OTPInput'
 import { ProfileSetup } from './ProfileSetup'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
 import { TextShimmerBasic } from '@/components/ui/text-shimmer'
+import { setStorageItem } from '@/lib/storage'
 
 type AuthStep = 'email' | 'otp' | 'profile'
 
@@ -49,7 +50,7 @@ export function AuthPage() {
       setIsNewUser(result.isNewUser)
       
       // Store email for later use (needed for profile creation)
-      localStorage.setItem('cdp_user_email', email)
+      setStorageItem('cdp_user_email', email)
       
       // If new user, show profile setup
       if (result.isNewUser) {
