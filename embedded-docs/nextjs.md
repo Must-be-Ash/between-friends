@@ -5,7 +5,7 @@
 Build a Next.js app with CDP embedded wallets using our dedicated Next.js template. This guide shows you how to create a server-side rendered app with CDP's client-side wallet functionality.
 
 <Tip>
-  Check out the [CDP Web SDK reference](https://coinbase.github.io/cdp-web) for comprehensive method signatures, types, and examples.
+  Check out the [CDP Web SDK reference](/sdks/cdp-sdks-v2/react) for comprehensive method signatures, types, and examples.
 </Tip>
 
 ## Prerequisites
@@ -317,4 +317,4 @@ Key transaction details:
 * [**Quickstart**](/embedded-wallets/quickstart): Full walkthrough of building your first CDP app with detailed explanations
 * [**CDP React Hooks**](/embedded-wallets/react-hooks): Available hooks like `useSignInWithEmail`, `useEvmAddress`, and `useSendEvmTransaction`
 * [**CDP React Components**](/embedded-wallets/react-components): Pre-built UI components for authentication and wallet management
-* [**CDP Web SDK Reference**](https://coinbase.github.io/cdp-web): Comprehensive API documentation
+* [**CDP Web SDK Reference**](/sdks/cdp-sdks-v2/react): Comprehensive API documentation

@@ -93,7 +93,7 @@ For the fastest integration, `@coinbase/cdp-react` provides a pre-built `AuthBut
 <Note>
   For more CDP React components and styling options, see the [React Components documentation](/embedded-wallets/react-components).
 
-  By default, email authentication is the only method enabled. For enabling additional methods, refer to the [AppConfig documentation](https://coinbase.github.io/cdp-web/interfaces/_coinbase_cdp-react.AppConfig.html)
+  By default, email authentication is the only method enabled. For enabling additional methods, refer to the [AppConfig documentation](/sdks/cdp-sdks-v2/react/@coinbase/cdp-react#appconfig)
 </Note>
 
 <CodeGroup>
@@ -559,48 +559,7 @@ The `@coinbase/cdp-core` package provides the low-level authentication primitive
 
 ## Developer-delegated authentication
 
-For applications with existing authentication systems, we offer developer-delegated authentication on a case-by-case basis. This allows you to integrate Embedded Wallets seamlessly with your current user authentication flow.
-
-### How it works
-
-1. **Your authentication**: Users authenticate with your existing system
-2. **Secure handoff**: Your backend securely communicates user identity to CDP
-3. **Wallet creation**: CDP creates or retrieves the user's wallet based on your authentication
-4. **Seamless experience**: Users never leave your application or see CDP authentication screens
-
-### Benefits
-
-* **Consistent UX**: Maintain your existing authentication experience
-* **Single sign-on**: Users don't need separate authentication for their wallet
-* **Enhanced security**: Leverage your existing security infrastructure
-* **Compliance ready**: Meet your specific regulatory requirements
-
-### Getting access
-
-Developer-delegated authentication requires custom integration and security review. To request access:
-
-<Steps>
-  <Step title="Evaluate your needs">
-    Ensure you have:
-
-    * An existing authentication system
-    * Backend infrastructure for secure communication
-    * Specific compliance or UX requirements that standard authentication doesn't meet
-  </Step>
-
-  <Step title="Contact our team">
-    Message us in the #server-wallets channel on [Discord](https://discord.gg/cdp)
-  </Step>
-
-  <Step title="Integration review">
-    Our team will work with you to:
-
-    * Review your authentication architecture
-    * Design a secure integration approach
-    * Provide custom SDK configuration
-    * Support your implementation
-  </Step>
-</Steps>
+This feature is in development and coming soon. This will enable applications with existing authentication systems to integrate Embedded Wallets seamlessly with their current user authentication flow.
 
 ## Server-side validation
 
@@ -803,4 +762,4 @@ Some developers take additional action (fetching additional data, starting async
 * **[React hooks](/embedded-wallets/react-hooks)**: Pre-built hooks for authentication and wallet management
 * **[React components](/embedded-wallets/react-components)**: Ready-to-use UI components including `AuthButton`
 * **[Security configuration](/embedded-wallets/domains)**: Configure domain allowlisting and security settings
-* **[API reference](https://coinbase.github.io/cdp-web)**: Complete documentation for the CDP Web SDK
+* **[API reference](/sdks/cdp-sdks-v2/react)**: Complete documentation for the CDP Web SDK

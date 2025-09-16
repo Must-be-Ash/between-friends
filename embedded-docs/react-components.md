@@ -2,10 +2,10 @@
 
 ## Overview
 
-CDP React components provide pre-built, customizable UI elements for common wallet and authentication flows, built on top of the CDP Embedded Wallets SDK. This guide will help you get started with `@coinbase/cdp-react` components in your application.
+CDP React components provide pre-built, customizable UI elements for common self-custodial wallet and authentication flows, built on top of the CDP Embedded Wallets SDK. This guide will help you get started with `@coinbase/cdp-react` components in your application.
 
 <Tip>
-  Check out the [CDP Web SDK reference](https://coinbase.github.io/cdp-web) for comprehensive method signatures, types, and examples.
+  Check out the [CDP Web SDK reference](/sdks/cdp-sdks-v2/react) for comprehensive method signatures, types, and examples.
 </Tip>
 
 ## Prerequisites
@@ -104,7 +104,7 @@ export default App;
 
 That's it! You've successfully installed `@coinbase/cdp-react`, set up the provider, and rendered your first component.
 
-Find all available components and their documentation in the [CDP React module reference](https://coinbase.github.io/cdp-web/modules/_coinbase_cdp-react.html).
+Find all available components and their documentation in the [CDP React module reference](/sdks/cdp-sdks-v2/react/@coinbase/cdp-react).
 
 ## 3. Customize theme (optional)
 
@@ -240,7 +240,8 @@ Then define these CSS variables in your stylesheet:
 
 ## What to read next
 
-* [**CDP Web SDK Documentation**](https://coinbase.github.io/cdp-web): Comprehensive API reference for the CDP Web SDK
+* [**CDP Web SDK Documentation**](/sdks/cdp-sdks-v2/react): Comprehensive API reference for the CDP Web SDK
 * [**Embedded Wallet - React Hooks**](/embedded-wallets/react-hooks): Use CDP hooks for custom implementations
 * [**Embedded Wallet - Wagmi Integration**](/embedded-wallets/wagmi): Combine CDP components with wagmi
 * [**Embedded Wallet - Next.js**](/embedded-wallets/nextjs): Special considerations for Next.js applications
+* [**Security & Export**](/embedded-wallets/security-export): Learn about private key export security considerations and implementation

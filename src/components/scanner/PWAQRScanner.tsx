@@ -290,34 +290,32 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
       {/* Hidden canvas for QR processing */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Overlay UI */}
-      <div className="absolute inset-0 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
-          <button
-            onClick={handleClose}
-            className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
+        <button
+          onClick={handleClose}
+          className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+        >
+          <X className="w-6 h-6" />
+        </button>
 
-          <h1 className="text-white text-lg font-semibold">Scan QR Code</h1>
+        <h1 className="text-white text-lg font-semibold">Scan QR Code</h1>
 
-          <button
-            onClick={toggleFlash}
-            className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-          >
-            {flashEnabled ? (
-              <FlashOn className="w-5 h-5" />
-            ) : (
-              <FlashOff className="w-5 h-5" />
-            )}
-          </button>
-        </div>
+        <button
+          onClick={toggleFlash}
+          className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+        >
+          {flashEnabled ? (
+            <FlashOn className="w-5 h-5" />
+          ) : (
+            <FlashOff className="w-5 h-5" />
+          )}
+        </button>
+      </div>
 
-        {/* Scanning Area - Perfectly centered on full screen */}
-        <div className="absolute inset-0">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+      {/* Scanning Area - Perfectly centered on full screen */}
+      <div className="absolute inset-0 z-10">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
             {/* QR Code Frame - Minimal corner design */}
             <div className="w-64 h-64 relative">
               {/* Top-left corner */}
@@ -355,13 +353,12 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-gradient-to-t from-black/50 to-transparent">
-          <div className="text-center">
-            <p className="text-white/70 text-sm">
-              Scan payment requests from Between Friends users
-            </p>
-          </div>
+      {/* Footer */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-black/50 to-transparent">
+        <div className="text-center">
+          <p className="text-white/70 text-sm">
+            Scan payment requests from Between Friends users
+          </p>
         </div>
       </div>
     </div>

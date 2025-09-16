@@ -5,7 +5,7 @@
 CDP provides React hooks for conveniently accessing the CDP Embedded Wallet SDK functionality. Built on top of `@coinbase/cdp-core`, these hooks offer a React-friendly interface for authentication and embedded wallet operations.
 
 <Tip>
-  Check out the [CDP Web SDK reference](https://coinbase.github.io/cdp-web) for comprehensive method signatures, types, and examples.
+  Check out the [CDP Web SDK reference](/sdks/cdp-sdks-v2/react) for comprehensive method signatures, types, and examples.
 </Tip>
 
 <Accordion title="Available hooks">
@@ -23,13 +23,20 @@ CDP provides React hooks for conveniently accessing the CDP Embedded Wallet SDK 
   ### Wallet operations
 
   * `useEvmAddress` - Get the primary EVM wallet address
-  * `useEvmAccounts` - Get all EVM accounts
-  * `useSendEvmTransaction` - Send transactions on Base networks (Base and Base Sepolia only)
+  * `useSendEvmTransaction` - Send transactions on many EVM networks via CDP
   * `useSignEvmTransaction` - Sign transactions for any EVM network
   * `useSignEvmMessage` - Sign plain text messages
   * `useSignEvmTypedData` - Sign EIP-712 typed data
   * `useSignEvmHash` - Sign message hashes
   * `useExportEvmAccount` - Export wallet private key
+
+  Note: For a list of all EVM EOAs, call `useCurrentUser()` and read `currentUser?.evmAccounts`.
+
+  ### Smart account operations
+
+  * `useSendUserOperation` - Submit ERC-4337 user operations (batch calls) with optional Paymaster gas sponsorship
+
+  Note: `useEvmAddress()` returns the Smart Account if one exists; otherwise it returns the owner's EOA.
 
   ### SDK state
 
@@ -89,6 +96,31 @@ function App() {
   );
 }
 ```
+
+Config options:
+
+* `projectId` (required)
+* `createAccountOnLogin` = `"evm-eoa" | "evm-smart"` (optional)
+* `basePath` (optional API base URL)
+* `useMock` (optional mock mode for local testing)
+* `debugging` (optional verbose API logging)
+
+### Smart account configuration (optional)
+
+Enable automatic smart account creation on login:
+
+```tsx
+<CDPHooksProvider
+  config={{
+    projectId: "your-project-id",
+    createAccountOnLogin: "evm-smart",
+  }}
+>
+  <YourApp />
+</CDPHooksProvider>
+```
+
+Learn more in the dedicated [Smart Accounts guide](/embedded-wallets/smart-accounts).
 
 ## 2. Ensure SDK initialization
 
@@ -159,19 +191,22 @@ Display user information and wallet addresses using CDP hooks:
 import { useCurrentUser, useEvmAddress } from "@coinbase/cdp-hooks";
 
 function Profile() {
-  const { user } = useCurrentUser();
+  const { currentUser } = useCurrentUser();
   const { evmAddress: primaryAddress } = useEvmAddress();
 
-  if (!user) {
+  if (!currentUser) {
     return <div>Please sign in</div>;
   }
 
   return (
     <div>
       <h2>Profile</h2>
-      <p>User ID: {user.userId}</p>
+      <p>User ID: {currentUser.userId}</p>
       <p>Primary Address: {primaryAddress}</p>
-      <p>All Accounts: {user.evmAccounts.join(", ")}</p>
+      <p>All Accounts: {currentUser.evmAccounts.join(", ")}</p>
+      {currentUser.evmSmartAccounts?.[0] && (
+        <p>Smart Account: {currentUser.evmSmartAccounts[0]}</p>
+      )}
     </div>
   );
 }
@@ -179,7 +214,16 @@ function Profile() {
 
 ### Send a transaction
 
-We support signing and sending a blockchain transaction in a single action on Base or Base Sepolia. For other networks, see the [next section](#sign-and-broadcast-non-base-networks).
+We support signing and sending a blockchain transaction in a single action on the networks listed below. For other networks, see the [next section](#sign-and-broadcast-non-supported-networks).
+
+* Base
+* Base Sepolia
+* Ethereum
+* Ethereum Sepolia
+* Arbitrum
+* Avalanche
+* Optimism
+* Polygon
 
 ```tsx
 import { useSendEvmTransaction, useEvmAddress } from "@coinbase/cdp-hooks";
@@ -214,14 +258,16 @@ function SendTransaction() {
 }
 ```
 
-### Sign and broadcast (non-Base networks)
+Note: This hook also returns a `data` state with statuses `idle | pending | success | error` that reflects the most recent transaction.
 
-For networks other than Base or Base Sepolia, you can sign a transaction with the wallet and broadcast it yourself. This example uses the public client from `viem` to broadcast the transaction:
+### Sign and broadcast (non-supported networks)
+
+For networks other than those supported by the Send Transaction API, you can sign a transaction with the wallet and broadcast it yourself. This example uses the public client from `viem` to broadcast the transaction:
 
 ```tsx
 import { useSignEvmTransaction, useEvmAddress } from "@coinbase/cdp-hooks";
 import { http, createPublicClient } from "viem";
-import { sepolia } from "viem/chains";
+import { tron } from "viem/chains";
 
 function NonBaseTransaction() {
   const { signEvmTransaction } = useSignEvmTransaction();
@@ -238,14 +284,14 @@ function NonBaseTransaction() {
           to: evmAddress,              // Send to yourself for testing
           value: 1000000000000n,       // 0.000001 ETH in wei
           gas: 21000n,                 // Standard ETH transfer gas limit
-          chainId: 11155111,           // Sepolia
+          chainId: 728126428,          // Tron
           type: "eip1559",             // Modern gas fee model
         }
       });
 
       // Broadcast using a different client
       const client = createPublicClient({
-        chain: sepolia,
+        chain: tron,
         transport: http()
       });
 
@@ -338,43 +384,55 @@ function SignData() {
 
 ### Export private keys
 
-Allow users to export their private key to import it into an EVM-compatible wallet of their choice:
-
 <Warning>
-  Handle private keys with extreme care! Never log them to console in production or expose them in your UI without proper security measures.
+  Private key export is a high-risk security operation. See our comprehensive [Security & Export](/embedded-wallets/security-export) guide for proper implementation, security considerations, and best practices.
 </Warning>
 
+The `useExportEvmAccount` hook allows users to export their private key for wallet migration or other purposes. For detailed implementation examples and security guidance, see the [Security & Export](/embedded-wallets/security-export#implementation) documentation.
+
+### Send a user operation (Smart Accounts)
+
+Send user operations from Smart Accounts with support for multiple calls and paymaster sponsorship. The hook returns a method to execute the user operation and forwards `status`, `data`, and `error` from its internal tracking.
+
 ```tsx
-import { useExportEvmAccount, useEvmAddress } from "@coinbase/cdp-hooks";
+import { useSendUserOperation, useCurrentUser } from "@coinbase/cdp-hooks";
 
-function ExportKey() {
-  const { exportEvmAccount } = useExportEvmAccount();
-  const { evmAddress } = useEvmAddress();
+function SendUserOperation() {
+  const { sendUserOperation } = useSendUserOperation();
+  const { currentUser } = useCurrentUser();
 
-  const handleExport = async () => {
-    if (!evmAddress) return;
+  const handleSendUserOperation = async () => {
+    const smartAccount = currentUser?.evmSmartAccounts?.[0];
+    if (!smartAccount) return;
 
     try {
-      const { privateKey } = await exportEvmAccount({
-        evmAccount: evmAddress
+      // This will automatically start tracking the user operation status
+      const result = await sendUserOperation({
+        evmSmartAccount: smartAccount,
+        network: "base-sepolia",
+        calls: [{
+          to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          value: 1000000000000000000n,
+          data: "0x",
+        }],
       });
 
-      // Handle the private key securely
-      // Never log or display in production!
-      navigator.clipboard.writeText(privateKey);
-      alert("Private key copied to clipboard");
+      console.log("User Operation Hash:", result.userOperationHash);
     } catch (error) {
-      console.error("Export failed:", error);
+      console.error("Failed to send user operation:", error);
     }
   };
 
-  return <button onClick={handleExport}>Export Private Key</button>;
+  return <button onClick={handleSendUserOperation}>Send User Operation</button>;
 }
 ```
 
+The hook returns the `sendUserOperation` method, which you call with the transaction parameters that you want to send. The hook also returns `status`, `data`, and `error` values which you can use to track the status of the user operation. For more information, see the [Smart Accounts guide](/embedded-wallets/smart-accounts#send-a-user-operation).
+
 ## What to read next
 
-* [**CDP Web SDK Documentation**](https://coinbase.github.io/cdp-web): Comprehensive API reference for the CDP Web SDK
+* [**CDP Web SDK Documentation**](/sdks/cdp-sdks-v2/react): Comprehensive API reference for the CDP Web SDK
 * [**Embedded Wallet - React Components**](/embedded-wallets/react-components): Pre-built UI components that work seamlessly with these hooks
 * [**Embedded Wallet - Wagmi Integration**](/embedded-wallets/wagmi): Use CDP wallets with the popular wagmi library
 * [**Embedded Wallet - Next.js**](/embedded-wallets/nextjs): Special considerations for Next.js applications
+* [**Embedded Wallet - Smart Accounts**](/embedded-wallets/smart-accounts): Dedicated guide for ERC-4337 features and paymasters (spend permissions coming soon)

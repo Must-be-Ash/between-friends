@@ -5,16 +5,16 @@
 Build a dapp using Coinbase Developer Platform (CDP) embedded wallet in under 5 minutes! This guide shows you how to integrate our wallet infrastructure directly into your React application using our [`cdp-create-app`](https://www.npmjs.com/package/@coinbase/create-cdp-app) package.
 
 <Tip>
-  Check out the [CDP Web SDK reference](https://coinbase.github.io/cdp-web) for comprehensive method signatures, types, and examples.
+  Check out the [CDP Web SDK reference](/sdks/cdp-sdks-v2/react) for comprehensive method signatures, types, and examples.
 </Tip>
 
 <Accordion title="What is an embedded wallet?">
-  An **embedded wallet** is a crypto wallet built directly into your app. Unlike traditional wallets (like MetaMask) that require browser extensions and seed phrases, embedded wallets let users sign in with just their email, a familiar experience for most users.
+  An **embedded wallet** is a self-custodial crypto wallet built directly into your app. Unlike traditional wallets (like MetaMask) that require browser extensions and seed phrases, embedded wallets let users sign in with familiar auth methods such as email, mobile SMS, and OAuth while maintaining full control of their assets.
 
   Key benefits:
 
   * **No downloads**: Works instantly in any browser
-  * **Email sign-in**: No seed phrases to lose
+  * **Email sign-in**: No seed phrases to manage, but users retain full control
   * **You control the UX**: Seamlessly integrated into your app
 </Accordion>
 
@@ -27,6 +27,29 @@ Build a dapp using Coinbase Developer Platform (CDP) embedded wallet in under 5 
 
 Let's get started by scaffolding a new React app with the necessary dependencies.
 
+<Tip>
+  Need to get started quickly and not using the demo app?
+
+  Install the SDK packages directly in your existing React app, then follow the [React Hooks](/embedded-wallets/react-hooks) or [React Components](/embedded-wallets/react-components) guides to set up the provider.
+
+  <CodeGroup>
+    ```bash npm
+    # With npm
+    npm install @coinbase/cdp-react @coinbase/cdp-core @coinbase/cdp-hooks
+    ```
+
+    ```bash pnpm
+    # With pnpm
+    pnpm add @coinbase/cdp-react @coinbase/cdp-core @coinbase/cdp-hooks
+    ```
+
+    ```bash yarn
+    # With yarn
+    yarn add @coinbase/cdp-react @coinbase/cdp-core @coinbase/cdp-hooks
+    ```
+  </CodeGroup>
+</Tip>
+
 ## 1. Add your domain
 
 To begin, add your domain to the list of [allowed domains](https://portal.cdp.coinbase.com/products/embedded-wallets/domains) in CDP Portal.
@@ -36,7 +59,7 @@ To begin, add your domain to the list of [allowed domains](https://portal.cdp.co
     Navigate to the [Domains Configuration](https://portal.cdp.coinbase.com/products/embedded-wallets/domains) in CDP Portal, and click **Add domain** to include your local app.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/cors-config-add-domain.png" alt="Add domain dialog in CDP Portal" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=d1ecf6491c979bf69553edeb1beca61a" alt="Add domain dialog in CDP Portal" width="1660" height="1120" data-path="images/cors-config-add-domain.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=01f89c16b13ca66fc3c24191fa7ab7c4 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=63c0b276c3ad4c5b3a37fd5e8f3a07b8 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=c3437a803a7dbcdb7eb22bfe913eb433 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=7a88a9292888b1be9510a7f6687e1c3c 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=c4c98bc08aa2b5983e936ec3dae7f757 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-add-domain.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=cf169bd996652b42bc278609240c46ac 2500w" data-optimize="true" data-opv="2" />
     </Frame>
   </Step>
 
@@ -44,7 +67,7 @@ To begin, add your domain to the list of [allowed domains](https://portal.cdp.co
     Use `http://localhost:3000` (the port your demo app will run locally).
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/cors-config-with-localhost.png" alt="Domain configuration with localhost" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=ea25f70a9b4fbf5e2e4668c61377c796" alt="Domain configuration with localhost" width="1208" height="538" data-path="images/cors-config-with-localhost.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=8f3391c327928e2d61e1d03764d19e6f 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=836f9c9ae8eb54b41096e97a99c9114f 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=e571488132b261b5f0430c8437c029bb 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=c8e52b451c48a4fb3f7d2989ba74f6da 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=51b910dd59784947a7ecf060853fcf8a 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-localhost.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=a2c1885fc15fe4c75034805a26e2645b 2500w" data-optimize="true" data-opv="2" />
     </Frame>
 
     <Warning>
@@ -56,7 +79,7 @@ To begin, add your domain to the list of [allowed domains](https://portal.cdp.co
     Click **Add domain** again to save your changes.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/cors-config-with-domain.png" alt="Domain configuration saved in CDP Portal" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=a68e0385f89e0c8cef10a43139924215" alt="Domain configuration saved in CDP Portal" width="1674" height="744" data-path="images/cors-config-with-domain.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=dd3ad1b541aa91ec1e57d24ec3670152 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=8b01359394a6187ecc7359d98a08d6b9 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=0082df68a31bb7f322450031bc31dc87 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=1de79708a0de0648206db8fe9f0d9437 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=85d18a75d410d7068bf39097a60981e6 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/cors-config-with-domain.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=989408a4e083704cf6fc01759a172801 2500w" data-optimize="true" data-opv="2" />
     </Frame>
 
     You should see your local app URL listed in the CDP Portal dashboard. The allowlist will take effect immediately upon saving.
@@ -66,8 +89,18 @@ To begin, add your domain to the list of [allowed domains](https://portal.cdp.co
 ## 2. Create the demo app
 
 <Steps titleSize="p">
+  <Step title="Copy your Project ID">
+    Navigate to [CDP Portal](https://portal.cdp.coinbase.com) and select your project from the top-left dropdown. Clicking the gear icon will take you to your project details:
+
+    <Frame>
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=0e8e8caa3e297490d37a0ad28de61dea" alt="CDP Project ID in project settings" width="609" height="331" data-path="images/embedded-wallet-project-id.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=0e333461b889852e445a88dfc4f238c5 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=bfe8e86552a859956560bc6178290d75 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=5f56a8d66a922cb16e63b5b14feff7db 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=ee49d8374ca8dac4c4529c7e7f63b3d5 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=db5d86377e48ba2374501618feec5b2f 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-project-id.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=6203e01aa49f6190d150436d2275f4d6 2500w" data-optimize="true" data-opv="2" />
+    </Frame>
+
+    Copy the **Project ID** value. You will use this in the next step when configuring your demo app.
+  </Step>
+
   <Step title="Create a new demo app">
-    Use the latest version of `cdp-app` to create a new demo app using your package manager:
+    Use the latest version of `create-cdp-app` to create a new demo app using your package manager:
 
     <CodeGroup>
       ```bash npm
@@ -82,60 +115,48 @@ To begin, add your domain to the list of [allowed domains](https://portal.cdp.co
       yarn create @coinbase/cdp-app@latest
       ```
     </CodeGroup>
-
-    Let this run in the background and move on to the next step.
   </Step>
 
-  <Step title="Copy your Project ID">
-    While the app is being created, navigate to [CDP Portal](https://portal.cdp.coinbase.com) and select your project from the top-left dropdown. Clicking the gear icon will take you to your project details:
+  <Step title="Configure your app">
+    Follow the prompts to configure your app with an embedded wallet. Name your project, select `React` as a template, and enter your CDP Project ID that you copied in the previous step.
 
-    <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-project-id.png" alt="CDP Project ID in project settings" />
-    </Frame>
+    ```console
+    Ok to proceed? (y) y
 
-    Copy the **Project ID** value. You will use this in the next step when configuring your demo app.
+    > npx
+    > create-cdp-app
+
+    ✔ Project name: … cdp-app-react
+    ✔ Select a template: › React
+    ✔ CDP Project ID (Find your project ID at https://portal.cdp.coinbase.com/projects/overview): … 8c21e60b-c8af-4286-a0d3-111111111111
+    ✔ Confirm you have whitelisted 'http://localhost:3000' by typing 'y' … y
+    ```
+  </Step>
+
+  <Step title="Run your app">
+    Navigate to your project directory, install dependencies, and start the development server:
+
+    <CodeGroup>
+      ```bash npm
+      cd cdp-app-react
+      npm install
+      npm run dev
+      ```
+
+      ```bash pnpm
+      cd cdp-app-react
+      pnpm install
+      pnpm dev
+      ```
+
+      ```bash yarn
+      cd cdp-app-react
+      yarn install
+      yarn dev
+      ```
+    </CodeGroup>
   </Step>
 </Steps>
-
-## 3. Configure
-
-Follow the prompts to configure your app with an embedded wallet. Name your project, select `React` as a template, and enter your CDP Project ID that you copied in the previous step.
-
-```console
-Ok to proceed? (y) y
-
-> npx
-> create-cdp-app
-
-✔ Project name: … cdp-app-react
-✔ Select a template: › React
-✔ CDP Project ID (Find your project ID at https://portal.cdp.coinbase.com/projects/overview): … 8c21e60b-c8af-4286-a0d3-111111111111
-✔ Confirm you have whitelisted 'http://localhost:3000' by typing 'y' … y
-```
-
-## 4. Run
-
-Navigate to your project directory, install dependencies, and start the development server:
-
-<CodeGroup>
-  ```bash npm
-  cd cdp-app-react
-  npm install
-  npm run dev
-  ```
-
-  ```bash pnpm
-  cd cdp-app-react
-  pnpm install
-  pnpm dev
-  ```
-
-  ```bash yarn
-  cd cdp-app-react
-  yarn install
-  yarn dev
-  ```
-</CodeGroup>
 
 On successful startup, you should see similar to the following:
 
@@ -147,7 +168,7 @@ On successful startup, you should see similar to the following:
   ➜  press h + enter to show help
 ```
 
-## 5. Demo your new wallet
+## 3. Demo your new wallet
 
 Now that your embedded wallet is configured and your app is running, let's try it out.
 
@@ -156,13 +177,13 @@ Now that your embedded wallet is configured and your app is running, let's try i
     Head to [http://localhost:3000](http://localhost:3000) and click the **Sign In** button.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-1-signin.png" alt="CDP React Demo Sign In" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=15b39a6df64d31e905119071b1609dd3" alt="CDP React Demo Sign In" width="514" height="191" data-path="images/embedded-wallet-1-signin.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=d8f063dfbd51e3a0ba9f27ecabd31ded 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=339199becb55abe5ebb1da36756b6d6f 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=7be29fbbc0978abc83dd021e654c7cec 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=4cc0fd25c6f325d8773e47b5adc1eac9 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=3e1e27104ec457625b14b639fdfa1e37 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-1-signin.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=4b09a1f0ecef22b9abe88b279243c4c3 2500w" data-optimize="true" data-opv="2" />
     </Frame>
   </Step>
 
   <Step title="Enter your email">
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-2-continue-with-email.png" alt="CDP React Demo Email" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=914d4bba39e13b4a6fd62b48d223c2da" alt="CDP React Demo Email" width="558" height="404" data-path="images/embedded-wallet-2-continue-with-email.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=01bfecbc8027debd7ec9fc9585cd9768 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=53897076c8e213f2143aba617f2beead 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=e7d2781e0da8849f6e506ce4b5e87821 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=e07d0693910b18219e5247f8512b6a3f 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=9776d64ed143ef96084ddeaeaae15efe 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-2-continue-with-email.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=bd9ba5874e11149ececf09cedf7c979b 2500w" data-optimize="true" data-opv="2" />
     </Frame>
   </Step>
 
@@ -170,7 +191,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     Enter the verification code sent to your e-mail.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-3-verify.png" alt="CDP React Demo Verify" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=117d13429767fefb1a4f1af2e8bd3e00" alt="CDP React Demo Verify" width="564" height="386" data-path="images/embedded-wallet-3-verify.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=900d502d5681ff1cfb39fd020e38a49b 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=4ecbd52115bb9ba02e7e96bbabaf4a22 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=94eda78d844af01786d1ebbcb71e2f5c 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=cdc58415a56926f499b0d7224a4f3b1d 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=823ae895b52016755f23c26b91d8c257 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-3-verify.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=72987959088152d549fdeab8280ffa58 2500w" data-optimize="true" data-opv="2" />
     </Frame>
   </Step>
 
@@ -184,7 +205,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     From the demo app, you can copy-and-paste your wallet address from the top-right corner. You can also monitor your wallet balance and (eventually -- keep reading!) send transactions. You should see similar to the following:
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-4-post-signin.png" alt="CDP React Demo Transaction" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=3187618dc9c025f2241928ea6c700291" alt="CDP React Demo Transaction" width="574" height="533" data-path="images/embedded-wallet-4-post-signin.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=3183101bccc5f1cc69a5559261692838 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=da6a7aeeae0fc5711460af59f03ccb0e 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=ab766db7f8f06e3630391cd7a327977f 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=d9a619d186a91a9c8ce74fa38199358e 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=fccf9a5ba4ed18cdc3d1eb8e47f0c8e3 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-4-post-signin.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=e7e1bcc118c602ce07396cdeddf317e6 2500w" data-optimize="true" data-opv="2" />
     </Frame>
 
     Find record of your new wallet on Base Sepolia explorer using the URL: `https://sepolia.basescan.org/address/YOUR-WALLET-ADDRESS`.
@@ -207,7 +228,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     </Accordion>
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-demo-faucet.png" alt="CDP React Demo Fund Wallet" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=4b3c944138d0b4d411d894f06b3e35fb" alt="CDP React Demo Fund Wallet" width="572" height="679" data-path="images/embedded-wallet-demo-faucet.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=aec3a8a60aa090d5a105e61f9f3b08c8 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=a369cbe6bc76f150cccfa486d8dfaea3 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=45a7c6eb07a51b6893f7622595c24caa 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=ec93686e8a1652646f74cf6de0f6b10e 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=cd4ebc4d37fb8babe85b431f4f7020a0 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-demo-faucet.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=76fe57430ae1267cadefae5a70571a4d 2500w" data-optimize="true" data-opv="2" />
     </Frame>
   </Step>
 
@@ -217,7 +238,7 @@ Now that your embedded wallet is configured and your app is running, let's try i
     Click **Send Transaction** to initiate the transfer. Once complete, you'll see a transaction hash that you can look up on the blockchain explorer.
 
     <Frame>
-      <img src="https://mintlify.s3.us-west-1.amazonaws.com/coinbase-prod/images/embedded-wallet-5-post-tx.png" alt="CDP React Demo Transaction" />
+      <img src="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=f6174bd35409bfc41981ec6e894c5263" alt="CDP React Demo Transaction" width="1037" height="195" data-path="images/embedded-wallet-5-post-tx.png" srcset="https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?w=280&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=65432c0ef2030f6825b7d89f93a09725 280w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?w=560&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=9c4f5ecb8109e091503ac3c3e40faf3f 560w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?w=840&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=fc616405180bd611173e5bb7227b3997 840w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?w=1100&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=ca1180605ce91716e59e8c2761a41e3b 1100w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?w=1650&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=aecdcdfdef9a9b6e2338fa0e295ddc90 1650w, https://mintcdn.com/coinbase-prod/54QcwrnR3tmkrVsF/images/embedded-wallet-5-post-tx.png?w=2500&fit=max&auto=format&n=54QcwrnR3tmkrVsF&q=85&s=41bfe47d3111099acbc6181c34b60b26 2500w" data-optimize="true" data-opv="2" />
     </Frame>
 
     🎉 You've successfully created an embedded wallet and sent your first transaction! Try adding some [React Hooks](/embedded-wallets/react-hooks) or additional [components](/embedded-wallets/react-components) to expand your app.
@@ -283,7 +304,7 @@ With just this single provider, your entire app gains:
 
 * **Embedded wallets**: No MetaMask or browser extensions required
 * **Email authentication**: Users sign in like any Web2 app
-* **Automatic key management**: CDP handles all private keys securely
+* **Self-custodial recovery**: Users maintain full control of their assets without managing seed phrases
 * **Built-in theme support**: Match your brand with the `theme` prop
 
 The `CDP_CONFIG` contains your **Project ID** from setup, stored securely in an environment variable (`VITE_CDP_PROJECT_ID`).
@@ -382,8 +403,8 @@ export default SignInScreen;
 
 The `AuthButton` component handles:
 
-* **Email authentication**: No seed phrases or private keys
-* **Wallet creation**: Automatically creates a wallet on first sign-in
+* **Email authentication**: No seed phrases to manage - users maintain full control
+* **Wallet creation**: Automatically creates a self-custodial wallet on first sign-in
 * **Session management**: Handles tokens and persistence
 * **UI/UX**: Professional auth flow with email verification
 
@@ -427,7 +448,7 @@ Notice what's missing? No wallet provider setup, no connection management, no ac
   When you see "EVM" in function names like `useEvmAddress()` or `sendEvmTransaction()`, it means these work with any EVM-compatible blockchain, not just Ethereum.
 </Accordion>
 
-We use viem to read blockchain data, but the wallet itself is managed entirely by CDP:
+We use viem to read blockchain data, while the user maintains full control of their self-custodial wallet:
 
 ```tsx src/SignedInScreen.tsx
 // Create a read-only client for Base Sepolia
@@ -438,11 +459,11 @@ const client = createPublicClient({
 
 function SignedInScreen() {
   const isSignedIn = useIsSignedIn();
-  const evmAddress = useEvmAddress();  // CDP provides the wallet address
+  const evmAddress = useEvmAddress();  // Get the user's self-custodial wallet address
   const [balance, setBalance] = useState<bigint | undefined>(undefined);
 ```
 
-The `useEvmAddress()` hook gives us access to the user's CDP-managed wallet address. This address is created and secured by CDP's embedded wallet infrastructure - no seed phrases or private keys to manage.
+The `useEvmAddress()` hook gives us access to the user's self-custodial wallet address. This address is created using CDP's embedded wallet infrastructure, providing users with full control of their assets without the complexity of traditional wallet management.
 
 <Accordion title="What are seed phrases and private keys?">
   Traditional wallets require users to manage:
@@ -450,18 +471,18 @@ The `useEvmAddress()` hook gives us access to the user's CDP-managed wallet addr
   * **Private key**: A long secret code that controls the wallet
   * **Seed phrase**: 12-24 words to recover the private key
 
-  CDP eliminates this complexity - users just sign in with email, and CDP securely manages the keys.
+  Embedded Wallets eliminate this complexity - users sign in with a simple auth method like email, and their wallet is ready to use. Users maintain full control and can export their private keys when needed using the `useExportEvmAccount` hook.
 </Accordion>
 
-For balance tracking, we query the blockchain using the CDP-provided address:
+For balance tracking, we query the blockchain using the user's wallet address:
 
 ```tsx src/SignedInScreen.tsx
   const getBalance = useCallback(async () => {
     if (!evmAddress) return;
     
-    // Query the blockchain for the CDP wallet's balance
+    // Query the blockchain for the user's wallet balance
     const balance = await client.getBalance({
-      address: evmAddress,  // The CDP embedded wallet address
+      address: evmAddress,  // The user's self-custodial wallet address
     });
     setBalance(balance);
   }, [evmAddress]);
@@ -502,9 +523,9 @@ Finally, we compose the authenticated UI with CDP components:
 
 Key CDP integration points:
 
-* The `Transaction` component uses CDP's `useSendEvmTransaction` hook
+* The `Transaction` component uses CDP's `useSendEvmTransaction` hook for seamless transactions
 * The `Header` includes CDP's `AuthButton` for session management
-* All wallet operations are handled by CDP's embedded wallet infrastructure
+* Users maintain full control of their self-custodial wallets while enjoying a simplified experience
 
 ### Sending transactions
 
@@ -533,7 +554,7 @@ function Transaction(props: Props) {
 
 Key CDP hooks:
 
-* `useSendEvmTransaction()`: Sends transactions using the CDP embedded wallet
+* `useSendEvmTransaction()`: Sends transactions from the user's self-custodial wallet
 * `useEvmAddress()`: Gets the current user's wallet address
 
 Next, we check if the user has funds to send:
@@ -562,7 +583,7 @@ Then we create the transaction handler using CDP's `sendEvmTransaction`:
           chainId: 84532,              // Base Sepolia testnet
           type: "eip1559",             // Modern gas fee model
         },
-        evmAccount: evmAddress,        // Your CDP wallet address
+        evmAccount: evmAddress,        // Your self-custodial wallet address
         network: "base-sepolia",       // Target network
       });
 
@@ -594,10 +615,10 @@ Then we create the transaction handler using CDP's `sendEvmTransaction`:
 
 The CDP SDK handles:
 
-* Private key management (you never see or touch private keys)
-* Transaction signing
+* Seamless transaction signing from your self-custodial wallet
 * Broadcasting to the network
 * Gas price estimation (though you can override)
+* Secure key operations while maintaining user control
 
 <Accordion title="What is transaction signing?">
   Signing a transaction proves you authorized the payment:
@@ -763,8 +784,10 @@ For more information on theme customization, see the [theme customization docume
 ## What to read next
 
 * [`create-cdp-app`](https://www.npmjs.com/package/@coinbase/create-cdp-app): View the `npm` package directly
-* [**CDP Web SDK Documentation**](https://coinbase.github.io/cdp-web): Comprehensive API reference for the CDP Web SDK
+* [**CDP Web SDK Documentation**](/sdks/cdp-sdks-v2/react): Comprehensive API reference for the CDP Web SDK
 * [**End User Authentication**](/embedded-wallets/end-user-authentication): Deep dive into authentication methods, error handling, and advanced patterns
 * [**Embedded Wallet - React Hooks**](/embedded-wallets/react-hooks): Learn about available hooks like `useSignInWithEmail`, `useEvmAddress`, and `useSendEvmTransaction`
 * [**Embedded Wallet - React Components**](/embedded-wallets/react-components): Explore pre-built components for authentication, wallet management, and transactions
+* [**Embedded Wallet - React Native**](/embedded-wallets/react-native): Build mobile apps with Coinbase Developer Platform (CDP) embedded wallets
 * [**Embedded Wallet - Wagmi Integration**](/embedded-wallets/wagmi): Use CDP wallets with the popular wagmi library for Ethereum development
+* [**Security & Export**](/embedded-wallets/security-export): Learn about private key export security considerations and implementation
