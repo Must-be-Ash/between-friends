@@ -24,13 +24,13 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
       // If amount is specified, create payment URL
       if (amount && parseFloat(amount) > 0) {
         // Only use window.location on client side
-        const baseUrl = typeof window !== 'undefined' 
-          ? window.location.origin 
+        const baseUrl = typeof window !== 'undefined'
+          ? window.location.origin
           : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
         const params = new URLSearchParams()
         params.set('to', address)
         params.set('amount', amount)
-        qrData = `${baseUrl}/send?${params.toString()}`
+        qrData = `${baseUrl}/pay?${params.toString()}`
       }
       
       const qrUrl = await QRCode.toDataURL(qrData, {
@@ -78,15 +78,20 @@ export function SimpleReceive({ address }: SimpleReceiveProps) {
 
   const handleShare = async () => {
     let shareText = 'Send me USDC'
-    const baseUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
+    const baseUrl = typeof window !== 'undefined'
+      ? window.location.origin
       : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    let shareUrl = `${baseUrl}/send?to=${address}`
-    
+
+    // Use /pay route which handles wallet address lookups and redirects properly
+    const params = new URLSearchParams()
+    params.set('to', address)
+
     if (amount && parseFloat(amount) > 0) {
       shareText = `Send me ${formatUSDCWithSymbol(amount)} USDC`
-      shareUrl += `&amount=${amount}`
+      params.set('amount', amount)
     }
+
+    const shareUrl = `${baseUrl}/pay?${params.toString()}`
 
     const shareData = {
       title: 'Between Friends Payment Request',

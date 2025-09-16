@@ -9,8 +9,8 @@ interface CDPProviderProps {
 
 export function CDPProvider({ children }: CDPProviderProps) {
   return (
-    <CDPReactProvider 
-      config={CDP_CONFIG} 
+    <CDPReactProvider
+      config={CDP_CONFIG}
       app={APP_CONFIG}
     >
       {children}
