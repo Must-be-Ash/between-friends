@@ -500,11 +500,15 @@ export async function getUserByWalletAddress(walletAddress: string): Promise<Use
     const db = await getDatabase()
     console.log('🔍 DATABASE: Connected to database:', db.databaseName)
 
-    // Normalize the wallet address to lowercase for consistent lookup
+    // Try both the original case and lowercase for backward compatibility
     const normalizedAddress = walletAddress.toLowerCase()
 
+
     const user = await db.collection('users').findOne({
-      walletAddress: normalizedAddress
+      $or: [
+        { walletAddress: walletAddress },     // Original case
+        { walletAddress: normalizedAddress }  // Lowercase
+      ]
     })
 
     console.log('🔍 DATABASE: Query result for wallet address', walletAddress, ':', user ? {

@@ -22,16 +22,16 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number>()
+  const mountedRef = useRef(true)
 
   const [isScanning, setIsScanning] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [flashEnabled, setFlashEnabled] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
-  const [scanLine, setScanLine] = useState(0)
 
   // Initialize camera and start scanning
-  const startCamera = useCallback(async () => {
+  const startCamera = async () => {
     try {
       console.log('🎥 Starting camera for QR scanning...')
 
@@ -49,20 +49,39 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
         }
       })
 
-      setStream(mediaStream)
-      setHasPermission(true)
-      setError(null)
+      if (mountedRef.current) {
+        setStream(mediaStream)
+        setHasPermission(true)
+        setError(null)
+      }
 
-      if (videoRef.current) {
+      if (videoRef.current && mountedRef.current) {
         videoRef.current.srcObject = mediaStream
+        // Handle play promise properly to avoid uncaught errors
         videoRef.current.play()
-        setIsScanning(true)
+          .then(() => {
+            console.log('✅ Video playback started')
+            if (mountedRef.current) {
+              setIsScanning(true)
+            }
+          })
+          .catch(err => {
+            console.warn('⚠️ Video play failed:', err)
+            // Try to play again after a short delay
+            setTimeout(() => {
+              if (videoRef.current && mountedRef.current) {
+                videoRef.current.play().catch(e => console.error('Video play retry failed:', e))
+              }
+            }, 100)
+          })
       }
 
       console.log('✅ Camera started successfully')
     } catch (err) {
       console.error('❌ Camera access error:', err)
-      setHasPermission(false)
+      if (mountedRef.current) {
+        setHasPermission(false)
+      }
 
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
@@ -78,24 +97,8 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
         setError('Failed to access camera.')
       }
     }
-  }, [])
+  }
 
-  // Stop camera and cleanup
-  const stopCamera = useCallback(() => {
-    console.log('🛑 Stopping camera...')
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-    }
-
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop())
-      setStream(null)
-    }
-
-    setIsScanning(false)
-    setScanLine(0)
-  }, [stream])
 
   // Parse QR code data
   const parseQRData = useCallback((data: string): QRScanResult => {
@@ -181,8 +184,6 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
       return
     }
 
-    // Update scan line animation
-    setScanLine(prev => (prev + 2) % 100)
 
     // Continue scanning
     animationFrameRef.current = requestAnimationFrame(scanQRCode)
@@ -220,18 +221,32 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
 
   // Initialize camera on mount
   useEffect(() => {
+    mountedRef.current = true
     startCamera()
 
     return () => {
-      stopCamera()
+      mountedRef.current = false
+      // Cleanup camera on unmount
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+      // Note: stream cleanup is handled by React state cleanup
     }
-  }, [startCamera, stopCamera])
+  }, []) // Empty dependency array - only run once on mount/unmount
 
   // Handle close
   const handleClose = useCallback(() => {
-    stopCamera()
+    // Stop camera directly without referencing stopCamera
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+    }
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop())
+      setStream(null)
+    }
+    setIsScanning(false)
     onClose()
-  }, [stopCamera, onClose])
+  }, [stream, onClose])
 
   if (hasPermission === false) {
     return (
@@ -267,6 +282,7 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
       <video
         ref={videoRef}
         className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
         playsInline
         muted
       />
@@ -299,33 +315,41 @@ export function PWAQRScanner({ onScanSuccess, onClose, className = '' }: PWAQRSc
           </button>
         </div>
 
-        {/* Scanning Area */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="relative">
-            {/* QR Code Finder */}
+        {/* Scanning Area - Perfectly centered on full screen */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            {/* QR Code Frame - Minimal corner design */}
             <div className="w-64 h-64 relative">
-              {/* Corner brackets */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-3 border-l-3 border-white rounded-tl-lg"></div>
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-3 border-r-3 border-white rounded-tr-lg"></div>
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-3 border-l-3 border-white rounded-bl-lg"></div>
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-3 border-r-3 border-white rounded-br-lg"></div>
+              {/* Top-left corner */}
+              <div className="absolute top-0 left-0 w-6 h-6">
+                <div className="absolute top-0 left-0 w-6 h-1.5 bg-[#F5F5F5] rounded-full"></div>
+                <div className="absolute top-0 left-0 w-1.5 h-6 bg-[#F5F5F5] rounded-full"></div>
+              </div>
 
-              {/* Scanning line animation */}
-              {isScanning && (
-                <div
-                  className="absolute left-0 right-0 h-0.5 bg-[#5CB0FF] shadow-lg transition-all duration-75"
-                  style={{ top: `${scanLine}%` }}
-                />
-              )}
+              {/* Top-right corner */}
+              <div className="absolute top-0 right-0 w-6 h-6">
+                <div className="absolute top-0 right-0 w-6 h-1.5 bg-[#F5F5F5] rounded-full"></div>
+                <div className="absolute top-0 right-0 w-1.5 h-6 bg-[#F5F5F5] rounded-full"></div>
+              </div>
+
+              {/* Bottom-left corner */}
+              <div className="absolute bottom-0 left-0 w-6 h-6">
+                <div className="absolute bottom-0 left-0 w-6 h-1.5 bg-[#F5F5F5] rounded-full"></div>
+                <div className="absolute bottom-0 left-0 w-1.5 h-6 bg-[#F5F5F5] rounded-full"></div>
+              </div>
+
+              {/* Bottom-right corner */}
+              <div className="absolute bottom-0 right-0 w-6 h-6">
+                <div className="absolute bottom-0 right-0 w-6 h-1.5 bg-[#F5F5F5] rounded-full"></div>
+                <div className="absolute bottom-0 right-0 w-1.5 h-6 bg-[#F5F5F5] rounded-full"></div>
+              </div>
             </div>
 
             {/* Instructions */}
-            <div className="mt-8 text-center">
-              <p className="text-white text-lg font-medium mb-2">
-                Position QR code within the frame
-              </p>
+            <div className="mt-12 text-center">
+
               <p className="text-white/70 text-sm">
-                We&apos;ll automatically detect and process the code
+              Position QR code within the frame
               </p>
             </div>
           </div>

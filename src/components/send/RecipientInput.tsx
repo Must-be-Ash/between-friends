@@ -32,13 +32,14 @@ interface RecipientInputProps {
   isLoadingBalance: boolean
   ownerUserId: string
   preSelectedContact?: {contactEmail: string; displayName: string} | null
+  preFilledAmount?: string
   currentStep: Step
   onStepChange: (step: Step) => void
 }
 
 type Step = 'select_contact' | 'enter_amount'
 
-export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalance, ownerUserId, preSelectedContact, currentStep, onStepChange }: RecipientInputProps) {
+export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalance, ownerUserId, preSelectedContact, preFilledAmount, currentStep, onStepChange }: RecipientInputProps) {
   const { getAccessToken } = useGetAccessToken()
   const [selectedContact, setSelectedContact] = useState<SelectedContact | null>(null)
   const [amount, setAmount] = useState('')
@@ -53,6 +54,13 @@ export function RecipientInput({ onShowConfirmation, userBalance, isLoadingBalan
       handleContactSelect(preSelectedContact)
     }
   }, [preSelectedContact]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle pre-filled amount
+  useEffect(() => {
+    if (preFilledAmount) {
+      setAmount(preFilledAmount)
+    }
+  }, [preFilledAmount])
 
   // Validate amount as user types
   useEffect(() => {

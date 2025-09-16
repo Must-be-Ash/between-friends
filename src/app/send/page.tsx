@@ -41,19 +41,25 @@ export default function SendPage() {
   const [transferData, setTransferData] = useState<TransferData | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [preSelectedContact, setPreSelectedContact] = useState<{contactEmail: string; displayName: string} | null>(null)
+  const [preFilledAmount, setPreFilledAmount] = useState<string>('')
   const [showConfirmationModal, setShowConfirmationModal] = useState(false)
   const [pendingTransferData, setPendingTransferData] = useState<TransferData | null>(null)
   const [recipientInputStep, setRecipientInputStep] = useState<'select_contact' | 'enter_amount'>('select_contact')
 
-  // Check for pre-selected contact from URL params
+  // Check for pre-selected contact and amount from URL params
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search)
       const contactEmail = searchParams.get('contactEmail')
       const displayName = searchParams.get('displayName')
-      
+      const amount = searchParams.get('amount')
+
       if (contactEmail && displayName) {
         setPreSelectedContact({ contactEmail, displayName })
+      }
+
+      if (amount) {
+        setPreFilledAmount(amount)
       }
     }
   }, [])
@@ -152,6 +158,7 @@ export default function SendPage() {
               isLoadingBalance={isLoadingBalance}
               ownerUserId={currentUser.userId}
               preSelectedContact={preSelectedContact}
+              preFilledAmount={preFilledAmount}
               currentStep={recipientInputStep}
               onStepChange={setRecipientInputStep}
             />

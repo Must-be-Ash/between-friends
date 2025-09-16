@@ -168,7 +168,11 @@ export default function ReceivePage() {
               Scan Another Code
             </button>
             <button
-              onClick={() => setMode('generate')}
+              onClick={() => {
+                setError(null)
+                setIsProcessing(false)
+                setMode('generate')
+              }}
               className="w-full py-3 px-6 border border-gray-600 text-gray-300 rounded-xl font-semibold hover:bg-gray-700 transition-colors"
             >
               Back to Generate
