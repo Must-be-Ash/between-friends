@@ -478,7 +478,7 @@ export async function getTransactionsByUserWithFilters(
 }
 
 export async function updateTransaction(
-  transferId: string, 
+  transferId: string,
   updates: Partial<Transaction>
 ): Promise<boolean> {
   try {
@@ -491,5 +491,33 @@ export async function updateTransaction(
   } catch (error) {
     console.error('Error updating transaction:', error)
     return false
+  }
+}
+
+export async function getUserByWalletAddress(walletAddress: string): Promise<User | null> {
+  try {
+    console.log('🔍 DATABASE: Looking up user with wallet address:', walletAddress)
+    const db = await getDatabase()
+    console.log('🔍 DATABASE: Connected to database:', db.databaseName)
+
+    // Normalize the wallet address to lowercase for consistent lookup
+    const normalizedAddress = walletAddress.toLowerCase()
+
+    const user = await db.collection('users').findOne({
+      walletAddress: normalizedAddress
+    })
+
+    console.log('🔍 DATABASE: Query result for wallet address', walletAddress, ':', user ? {
+      _id: user._id,
+      userId: user.userId,
+      email: user.email,
+      displayName: user.displayName,
+      walletAddress: user.walletAddress
+    } : null)
+
+    return user as User | null
+  } catch (error) {
+    console.error('Error getting user by wallet address:', error)
+    return null
   }
 }

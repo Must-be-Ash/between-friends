@@ -28,29 +28,35 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
   const generateQRCode = useCallback(async () => {
     setIsGenerating(true)
     try {
-      // Create payment URL - this would open the send page with pre-filled data
+      // Create universal payment URL that works for both in-app scanning and external cameras
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
       const params = new URLSearchParams()
-      
-      // Add wallet address
+
+      // Add wallet address - this is the primary identifier
       params.set('to', paymentRequest.walletAddress)
-      
+
       // Add amount if specified
       if (paymentRequest.amount) {
         params.set('amount', paymentRequest.amount)
       }
-      
-      // Add message if specified  
+
+      // Add message if specified
       if (paymentRequest.message) {
         params.set('message', paymentRequest.message)
       }
-      
+
       // Add user info if available
       if (paymentRequest.displayName) {
         params.set('name', paymentRequest.displayName)
       }
-      
-      const fullPaymentUrl = `${baseUrl}/send?${params.toString()}`
+
+      // Add user email for direct contact lookup (privacy consideration: this exposes email in QR)
+      if (paymentRequest.userEmail) {
+        params.set('email', paymentRequest.userEmail)
+      }
+
+      // Use /pay route for universal compatibility - handles both PWA and external scanning
+      const fullPaymentUrl = `${baseUrl}/pay?${params.toString()}`
       setPaymentUrl(fullPaymentUrl)
       
       // Generate QR code for the payment URL
@@ -254,10 +260,11 @@ export function QRCodeDisplay({ paymentRequest, onBack, onEditRequest }: QRCodeD
       <div className="card bg-blue-50 border-blue-200">
         <h4 className="font-medium text-blue-900 mb-3">How to Use This QR Code</h4>
         <div className="text-blue-800 text-sm space-y-2">
-          <p>• Show the QR code to someone nearby to scan</p>
-          <p>• Share the link via text message or email</p>
-          <p>• The QR code opens Between Friends with pre-filled payment info</p>
-          <p>• Only works with Base Network USDC transfers</p>
+          <p>• <strong>In-App:</strong> Long press the QR icon in navigation to scan codes</p>
+          <p>• <strong>Show & Scan:</strong> Others can scan with their phone camera</p>
+          <p>• <strong>Share Link:</strong> Send via text message or email</p>
+          <p>• Works with any QR scanner - automatically opens Between Friends</p>
+          <p>• Base Network USDC transfers only</p>
         </div>
       </div>
     </div>
