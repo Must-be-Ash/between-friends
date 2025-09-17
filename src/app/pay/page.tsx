@@ -115,9 +115,9 @@ function PayPageContent() {
 
       setRecipientUser(userLookup.user || null)
 
-      // If user is signed in and in PWA, redirect directly to send flow
-      if (isSignedIn && standalone && userLookup.user) {
-        console.log('✅ Signed in user in PWA - redirecting to send flow')
+      // If user is signed in, redirect directly to send flow (like QR code scanning)
+      if (isSignedIn && userLookup.user) {
+        console.log('✅ Signed in user - redirecting to send flow')
 
         const sendParams = new URLSearchParams()
         sendParams.set('contactEmail', userLookup.user.email)

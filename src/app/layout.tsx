@@ -13,6 +13,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  minimumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
   themeColor: '#222222',
@@ -84,6 +85,8 @@ export const metadata: Metadata = {
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-status-bar-style': 'default',
     'apple-mobile-web-app-title': 'Between Friends',
+    'format-detection': 'telephone=no',
+    'msapplication-tap-highlight': 'no',
   },
 }
 
