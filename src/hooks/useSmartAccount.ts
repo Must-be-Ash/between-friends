@@ -1,33 +1,10 @@
 "use client";
 
-import { useCurrentUser, useSendUserOperation } from '@coinbase/cdp-hooks'
-import { getCDPNetworkName, prepareUSDCTransferCall, prepareUSDCApprovalCall, prepareEscrowDepositCall, SmartAccountCall, PAYMASTER_CONFIG } from '@/lib/cdp'
-import { keccak256, toBytes } from 'viem'
-
-export interface SmartAccountTransferOptions {
-  recipientAddress: string
-  amount: string
-  useGasSponsoring?: boolean
-  customPaymasterUrl?: string
-}
-
-export interface SmartAccountEscrowOptions {
-  transferId: string
-  amount: string
-  recipientEmail: string
-  timeoutDays?: number
-  useGasSponsoring?: boolean
-  customPaymasterUrl?: string
-}
-
-interface PaymasterOptions {
-  useCdpPaymaster?: boolean
-  paymasterUrl?: string
-}
+import { useCurrentUser } from '@coinbase/cdp-hooks'
+import { getCDPNetworkName, prepareUSDCTransferCall, prepareUSDCApprovalCall, prepareEscrowDepositCall, PAYMASTER_CONFIG } from '@/lib/cdp'
 
 export function useSmartAccount() {
   const { currentUser } = useCurrentUser()
-  const { sendUserOperation, status, data, error } = useSendUserOperation()
 
   // Get the smart account address (primary address if smart account exists)
   const smartAccount = currentUser?.evmSmartAccounts?.[0]
@@ -35,117 +12,6 @@ export function useSmartAccount() {
 
   // Get network name for CDP
   const network = getCDPNetworkName()
-
-  /**
-   * Send a direct USDC transfer using smart account
-   */
-  const sendDirectTransfer = async (options: SmartAccountTransferOptions) => {
-    if (!smartAccount) {
-      throw new Error('Smart account not available')
-    }
-
-    const { recipientAddress, amount, useGasSponsoring = true, customPaymasterUrl } = options
-
-    // Prepare the USDC transfer call
-    const transferCall = prepareUSDCTransferCall(recipientAddress, amount)
-
-    // Determine paymaster configuration
-    const paymasterOptions: PaymasterOptions = {}
-    if (useGasSponsoring) {
-      if (customPaymasterUrl) {
-        paymasterOptions.paymasterUrl = customPaymasterUrl
-      } else if (PAYMASTER_CONFIG.enabled) {
-        paymasterOptions.paymasterUrl = PAYMASTER_CONFIG.url
-      } else {
-        paymasterOptions.useCdpPaymaster = true // Fallback to CDP paymaster
-      }
-    }
-
-    // Send user operation with optional gas sponsoring
-    const result = await sendUserOperation({
-      evmSmartAccount: smartAccount,
-      network,
-      calls: [transferCall],
-      ...paymasterOptions,
-    })
-
-    return result
-  }
-
-  /**
-   * Send USDC to escrow using smart account
-   */
-  const sendEscrowDeposit = async (options: SmartAccountEscrowOptions) => {
-    if (!smartAccount) {
-      throw new Error('Smart account not available')
-    }
-
-    const { transferId, amount, recipientEmail, timeoutDays = 7, useGasSponsoring = true, customPaymasterUrl } = options
-
-    // Hash the recipient email for privacy
-    const recipientEmailHash = keccak256(toBytes(recipientEmail))
-
-    // Prepare the escrow deposit call
-    const depositCall = prepareEscrowDepositCall(transferId, amount, recipientEmailHash, timeoutDays)
-
-    // Determine paymaster configuration
-    const paymasterOptions: PaymasterOptions = {}
-    if (useGasSponsoring) {
-      if (customPaymasterUrl) {
-        paymasterOptions.paymasterUrl = customPaymasterUrl
-      } else if (PAYMASTER_CONFIG.enabled) {
-        paymasterOptions.paymasterUrl = PAYMASTER_CONFIG.url
-      } else {
-        paymasterOptions.useCdpPaymaster = true // Fallback to CDP paymaster
-      }
-    }
-
-    // Send user operation with optional gas sponsoring
-    const result = await sendUserOperation({
-      evmSmartAccount: smartAccount,
-      network,
-      calls: [depositCall],
-      ...paymasterOptions,
-    })
-
-    return result
-  }
-
-  /**
-   * Send multiple calls in a single user operation (batch)
-   */
-  const sendBatchOperation = async (calls: SmartAccountCall[], useGasSponsoring = true) => {
-    if (!smartAccount) {
-      throw new Error('Smart account not available')
-    }
-
-    const result = await sendUserOperation({
-      evmSmartAccount: smartAccount,
-      network,
-      calls,
-      useCdpPaymaster: useGasSponsoring,
-    })
-
-    return result
-  }
-
-  /**
-   * Send a custom user operation
-   */
-  const sendCustomOperation = async (calls: SmartAccountCall[], useGasSponsoring = true) => {
-    if (!smartAccount) {
-      throw new Error('Smart account not available')
-    }
-
-    const result = await sendUserOperation({
-      evmSmartAccount: smartAccount,
-      network,
-      calls,
-      useCdpPaymaster: useGasSponsoring,
-    })
-
-    return result
-  }
 
   /**
    * Check if gas sponsoring is available
@@ -195,18 +61,7 @@ export function useSmartAccount() {
     hasSmartAccount,
     network,
 
-    // User operation methods
-    sendDirectTransfer,
-    sendEscrowDeposit,
-    sendBatchOperation,
-    sendCustomOperation,
-
-    // Status tracking
-    status,
-    data,
-    error,
-
-    // Utility methods
+    // Utility methods for call preparation
     prepareUSDCTransferCall,
     prepareUSDCApprovalCall,
     prepareEscrowDepositCall,

@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from 'react'
-import { useSendEvmTransaction, useGetAccessToken } from '@coinbase/cdp-hooks'
+import { useSendEvmTransaction, useGetAccessToken, useSendUserOperation, useCurrentUser } from '@coinbase/cdp-hooks'
 import { formatUSDCWithSymbol } from '@/lib/utils'
-import { getCDPNetworkName } from '@/lib/cdp'
+import { getCDPNetworkName, prepareUSDCTransferCall, prepareUSDCApprovalCall, prepareEscrowDepositCall } from '@/lib/cdp'
+import { keccak256, toBytes } from 'viem'
 import { useSmartAccount } from '@/hooks/useSmartAccount'
 
 interface RecipientInfo {
   email: string
   exists: boolean
   displayName?: string
+  walletAddress?: string
   transferType: 'direct' | 'escrow'
 }
 
@@ -21,6 +23,7 @@ interface TransferData {
 interface CDPUser {
   userId: string
   email?: string
+  evmSmartAccounts?: string[]
 }
 
 interface SendConfirmationProps {
@@ -35,20 +38,25 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState<string>('')
-  const [useSmartAccountMode, setUseSmartAccountMode] = useState(true) // Default to smart account
+  const [useSmartAccountMode] = useState(true) // Default to smart account
   
   const { recipient, amount } = transferData
   const isDirect = recipient.transferType === 'direct'
   
-  // Smart account hook
+  // CDP smart account hooks
+  const { currentUser: cdpUser } = useCurrentUser()
+  const { sendUserOperation } = useSendUserOperation()
+
+  // Smart account utilities
   const smartAccountHook = useSmartAccount()
   const {
-    hasSmartAccount,
     getGasSponsoringStatus,
-    getErrorMessage,
-    paymasterEnabled
+    getErrorMessage
   } = smartAccountHook
 
+  // Get smart account info
+  const smartAccount = cdpUser?.evmSmartAccounts?.[0]
+  const hasSmartAccount = !!smartAccount
   const gasSponsoringStatus = getGasSponsoringStatus()
   
   // Fallback to regular EOA transaction
@@ -64,7 +72,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
 
     try {
       // Use smart account if available and enabled
-      if (useSmartAccountMode && smartAccountHook.hasSmartAccount) {
+      if (useSmartAccountMode && hasSmartAccount) {
         await handleSmartAccountSend()
       } else {
         await handleEOASend()
@@ -80,55 +88,132 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   }
 
   const handleSmartAccountSend = async () => {
+    if (!smartAccount) {
+      throw new Error('Smart account not available')
+    }
+
     setCurrentStep('Preparing smart account transaction...')
-    
+
     if (isDirect) {
       // Direct transfer using smart account
       setCurrentStep('Sending USDC via smart account...')
-      
-      // For direct transfers, we need to get the recipient's wallet address from the API
-      const accessToken = await getAccessToken()
-      const userResponse = await fetch(`/api/users?email=${encodeURIComponent(recipient.email)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      })
 
-      if (!userResponse.ok) {
-        throw new Error('Failed to get recipient wallet address')
+      // For direct transfers, the recipient should already have a wallet address
+      // from the initial lookup that determined this is a direct transfer
+      if (!recipient.walletAddress) {
+        throw new Error('Recipient wallet address not found in transfer data')
       }
 
-      const { user: recipientUser } = await userResponse.json()
-      const recipientAddress = recipientUser.walletAddress
+      const recipientAddress = recipient.walletAddress
 
-      if (!recipientAddress) {
-        throw new Error('Recipient wallet address not found')
-      }
+      // Prepare USDC transfer call using CDP utilities
+      const transferCall = prepareUSDCTransferCall(recipientAddress, amount)
 
-      const result = await smartAccountHook.sendDirectTransfer({
-        recipientAddress: recipientAddress,
-        amount: amount,
-        useGasSponsoring: true // Enable gas sponsoring
+      console.log('🔐 Smart Account Direct Transfer:', {
+        smartAccount,
+        network: getCDPNetworkName(),
+        call: transferCall,
+        gasSponsored: true
       })
-      
+
+      // Send user operation with CDP paymaster
+      const result = await sendUserOperation({
+        evmSmartAccount: smartAccount as `0x${string}`,
+        network: getCDPNetworkName(),
+        calls: [transferCall],
+        useCdpPaymaster: true // Enable gas sponsoring
+      })
+
       console.log('✅ Smart Account Direct Transfer Result:', result)
+
+      // Record transaction in history
+      await recordTransactionHistory(result.userOperationHash, 'direct')
+
       onSuccess(result.userOperationHash)
     } else {
       // Escrow deposit using smart account
       setCurrentStep('Creating escrow deposit via smart account...')
-      
+
       // Generate a unique transfer ID
       const transferId = `escrow_${Date.now()}_${Math.random().toString(36).substring(2)}`
-      
-      const result = await smartAccountHook.sendEscrowDeposit({
-        transferId,
-        amount: amount,
-        recipientEmail: recipient.email,
-        timeoutDays: 7,
-        useGasSponsoring: true // Enable gas sponsoring
+
+      // Prepare escrow deposit call
+      const recipientEmailHash = keccak256(toBytes(recipient.email.toLowerCase()))
+      const escrowCall = prepareEscrowDepositCall(transferId, amount, recipientEmailHash, 7)
+
+      // Check if we need approval first
+      const accessToken = await getAccessToken()
+      const approvalResponse = await fetch('/api/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId: currentUser.userId,
+          senderAddress: evmAddress,
+          recipientEmail: recipient.email,
+          amount: amount,
+          smartAccountMode: true // Tell API we're using smart account
+        }),
       })
-      
+
+      if (!approvalResponse.ok) {
+        const errorData = await approvalResponse.json()
+        throw new Error(errorData.error || 'Failed to prepare escrow transfer')
+      }
+
+      const approvalData = await approvalResponse.json()
+      const calls = []
+
+      // Add approval call if needed
+      if (approvalData.requiresApproval) {
+        setCurrentStep('Approving USDC for escrow...')
+        const approvalCall = prepareUSDCApprovalCall(
+          approvalData.escrowAddress || process.env.NEXT_PUBLIC_SIMPLIFIED_ESCROW_ADDRESS,
+          amount
+        )
+        calls.push(approvalCall)
+      }
+
+      // Add escrow deposit call
+      calls.push(escrowCall)
+
+      console.log('🔐 Smart Account Escrow Deposit:', {
+        smartAccount,
+        network: getCDPNetworkName(),
+        calls,
+        gasSponsored: true,
+        transferId
+      })
+
+      // Send user operation with CDP paymaster (batch: approval + deposit)
+      const result = await sendUserOperation({
+        evmSmartAccount: smartAccount as `0x${string}`,
+        network: getCDPNetworkName(),
+        calls,
+        useCdpPaymaster: true // Enable gas sponsoring
+      })
+
       console.log('✅ Smart Account Escrow Deposit Result:', result)
+
+      // Update the transfer status in database
+      await fetch('/api/send', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          transferId: transferId,
+          txHash: result.userOperationHash,
+          transferType: 'escrow'
+        }),
+      })
+
+      // Record transaction in history
+      await recordTransactionHistory(result.userOperationHash, 'escrow', transferId)
+
       onSuccess(result.userOperationHash)
     }
   }
@@ -356,7 +441,6 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       } else {
         throw new Error('Transaction completed but no hash received')
       }
-      
     } catch (error) {
       console.error('Transfer error:', error)
       setError(error instanceof Error ? error.message : 'Failed to process transfer')
@@ -365,6 +449,45 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       setCurrentStep('')
     }
   }
+
+  // Helper function to record transaction history
+  const recordTransactionHistory = async (txHash: string, transferType: 'direct' | 'escrow', transferId?: string) => {
+    try {
+      console.log('📝 RECORDING TRANSACTION IN HISTORY:', {
+        txHash: txHash,
+        transferType: transferType,
+        recipient,
+        amount
+      })
+
+      const accessToken = await getAccessToken()
+      await fetch('/api/send/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId: currentUser.userId,
+          txHash: txHash,
+          transferType: transferType,
+          recipient: {
+            email: recipient.email,
+            displayName: recipient.displayName,
+            exists: recipient.exists,
+          },
+          amount: amount,
+          transferId: transferId
+        }),
+      })
+
+      console.log('✅ TRANSACTION HISTORY RECORDED SUCCESSFULLY')
+    } catch (historyError) {
+      console.error('Failed to record transaction history:', historyError)
+      // Don't fail the entire flow if history recording fails
+    }
+  }
+
 
   return (
     <div className="bg-[#222222] rounded-3xl p-6 space-y-6">
@@ -411,7 +534,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
 
 
       {/* Smart Account Toggle */}
-      {hasSmartAccount && (
+      {/* {hasSmartAccount && (
         <div className="bg-[#2A2A2A] rounded-xl p-4 border border-[#4A4A4A]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -438,7 +561,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
             </label>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Error Display */}
       {error && (
@@ -456,7 +579,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       )}
 
       {/* Smart Account Status */}
-      {useSmartAccountMode && hasSmartAccount && (
+      {/* {useSmartAccountMode && hasSmartAccount && (
         <div className={`rounded-xl p-4 border ${
           gasSponsoringStatus.available
             ? 'bg-[#2A4A2A] border-[#4A6B4A]'
@@ -497,7 +620,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
             )}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Action Buttons */}
       <div className="flex space-x-4 pt-2">
@@ -522,7 +645,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               Processing...
             </div>
           ) : (
-            useSmartAccountMode && hasSmartAccount && gasSponsoringStatus.available ? 'Send (Gas-Free)' : 'Confirm'
+            useSmartAccountMode && hasSmartAccount && gasSponsoringStatus.available ? 'Send' : 'Confirm'
           )}
         </button>
       </div>

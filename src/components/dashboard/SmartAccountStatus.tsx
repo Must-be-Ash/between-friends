@@ -21,6 +21,7 @@ export function SmartAccountStatus() {
 
   return (
     <div className="bg-[#2A2A2A] rounded-2xl p-6 border border-[#4A4A4A] shadow-2xl">
+     
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">Wallet Status</h3>
         {hasSmartAccount && (

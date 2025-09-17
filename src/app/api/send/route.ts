@@ -34,6 +34,7 @@ const SendRequestSchema = z.object({
   senderAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid sender address'),
   recipientEmail: z.string().email('Invalid recipient email'),
   amount: z.string().regex(/^\d+(\.\d{1,6})?$/, 'Invalid amount format'),
+  smartAccountMode: z.boolean().optional(), // Flag to indicate smart account usage
 })
 
 export async function POST(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Validate request
-    const { userId, senderAddress, recipientEmail, amount } = SendRequestSchema.parse(body)
+    const { userId, senderAddress, recipientEmail, amount, smartAccountMode = false } = SendRequestSchema.parse(body)
     
     // Ensure user can only send from their own account
     const authenticatedUserId = extractUserIdFromCDPUser(authResult.user)
@@ -106,55 +107,76 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      
+
       try {
-        // Prepare USDC transfer transaction
-        const transaction = await prepareUSDCTransfer(
-          senderAddress as Address,
-          recipient.walletAddress as Address,
-          amount
-        )
-        
-        // Check if user has sufficient ETH for gas (using dynamic gas price)
-        const currentGasPrice = await getCurrentGasPrice()
-        const hasETHForGas = await hasSufficientETHForGas(
-          senderAddress as Address,
-          BigInt(100000), // Estimated gas limit for USDC transfer
-          currentGasPrice // Use current network gas price
-        )
-        
-        // Convert BigInt values to strings for JSON serialization
-        const serializedTransaction: Record<string, unknown> = {
-          to: transaction.to,
-          value: transaction.value?.toString() || '0',
-          data: transaction.data,
-          chainId: transaction.chainId,
-          type: transaction.type || 'eip1559',
-          gasSponsored: !hasETHForGas // Flag to indicate if gas is sponsored
-        }
-        
-        console.log('🔍 DIRECT TRANSFER TRANSACTION:', {
-          to: '[ADDRESS_REDACTED]',
-          value: transaction.value?.toString(),
-          type: transaction.type
-        })
+        if (smartAccountMode) {
+          // For smart accounts, return simplified response - frontend handles user operations
+          console.log('🔍 SMART ACCOUNT DIRECT TRANSFER REQUEST:', {
+            to: '[ADDRESS_REDACTED]',
+            amount,
+            smartAccountMode: true
+          })
 
-        // Transaction record will be created in /send/complete after successful signing
-        // Don't create transaction here to avoid duplicates
+          const response = {
+            success: true,
+            transferType: 'direct',
+            smartAccountMode: true,
+            recipient: {
+              email: recipient.email,
+              displayName: recipient.displayName,
+              walletAddress: recipient.walletAddress,
+            },
+            message: `Ready to send ${amount} USDC directly to ${recipient.displayName || recipient.email} via smart account`
+          }
 
-        const response = {
-          success: true,
-          transferType: 'direct',
-          recipient: {
-            email: recipient.email,
-            displayName: recipient.displayName,
-            walletAddress: recipient.walletAddress,
-          },
-          transaction: serializedTransaction,
-          message: `Ready to send ${amount} USDC directly to ${recipient.displayName || recipient.email}`
+          return NextResponse.json(response)
+        } else {
+          // For EOA users, prepare traditional transaction
+          const transaction = await prepareUSDCTransfer(
+            senderAddress as Address,
+            recipient.walletAddress as Address,
+            amount
+          )
+
+          // Check if user has sufficient ETH for gas (using dynamic gas price)
+          const currentGasPrice = await getCurrentGasPrice()
+          const hasETHForGas = await hasSufficientETHForGas(
+            senderAddress as Address,
+            BigInt(100000), // Estimated gas limit for USDC transfer
+            currentGasPrice // Use current network gas price
+          )
+
+          // Convert BigInt values to strings for JSON serialization
+          const serializedTransaction: Record<string, unknown> = {
+            to: transaction.to,
+            value: transaction.value?.toString() || '0',
+            data: transaction.data,
+            chainId: transaction.chainId,
+            type: transaction.type || 'eip1559',
+            gasSponsored: !hasETHForGas // Flag to indicate if gas is sponsored
+          }
+
+          console.log('🔍 EOA DIRECT TRANSFER TRANSACTION:', {
+            to: '[ADDRESS_REDACTED]',
+            value: transaction.value?.toString(),
+            type: transaction.type
+          })
+
+          const response = {
+            success: true,
+            transferType: 'direct',
+            smartAccountMode: false,
+            recipient: {
+              email: recipient.email,
+              displayName: recipient.displayName,
+              walletAddress: recipient.walletAddress,
+            },
+            transaction: serializedTransaction,
+            message: `Ready to send ${amount} USDC directly to ${recipient.displayName || recipient.email}`
+          }
+
+          return NextResponse.json(serializeBigInt(response))
         }
-        
-        return NextResponse.json(serializeBigInt(response))
       } catch (error) {
         console.error('Direct transfer preparation error:', error)
         return NextResponse.json(
@@ -168,69 +190,11 @@ export async function POST(request: NextRequest) {
         // Generate transfer ID for SimplifiedEscrow (no claim token needed)
         const transferId = generateSimpleTransferId()
         const expiryDate = calculateExpiryDate(7) // 7 days
-        
+
         // Import SimplifiedEscrow contract address
         const { SIMPLIFIED_ESCROW_ADDRESS } = await import('@/lib/simplified-escrow')
         const escrowAddress = SIMPLIFIED_ESCROW_ADDRESS
-        
-        const hasAllowance = await hasSufficientAllowance(
-          senderAddress as Address,
-          escrowAddress as Address,
-          amount
-        )
-        
-        // Prepare transactions - approval first if needed, then deposit
-        const transactions: Array<Record<string, unknown>> = []
-        
-        if (!hasAllowance) {
-          // Prepare approval transaction for the correct escrow contract
-          const approvalTx = prepareUSDCApproval(
-            senderAddress as string,
-            escrowAddress as string,
-            amount
-          )
-          // Serialize BigInt values
-          const serializedApprovalTx = {
-            ...approvalTx,
-            value: approvalTx.value.toString(),
-            description: `Approve USDC for SimplifiedEscrow contract`
-          }
-          transactions.push(serializedApprovalTx)
-        }
-        
-        // Prepare escrow deposit transaction (email hash only, no secrets)
-        // Only prepare if we have allowance, otherwise just store the parameters
-        if (hasAllowance) {
-          // Use SimplifiedEscrow contract
-          const { prepareSimplifiedEscrowDeposit } = await import('@/lib/simplified-escrow')
-          const depositTx = prepareSimplifiedEscrowDeposit({
-            transferId,
-            recipientEmail,
-            amount
-          })
-          
-          // Serialize BigInt values
-          const serializedDepositTx = {
-            ...depositTx,
-            value: depositTx.value?.toString() || '0',
-            description: `Deposit USDC to SimplifiedEscrow`
-          }
-          transactions.push(serializedDepositTx)
-        } else {
-          // Store deposit parameters for later preparation after approval
-          transactions.push({
-            type: 'simplified_escrow_deposit',
-            parameters: {
-              senderAddress,
-              amount,
-              transferId,
-              recipientEmail,
-              timeoutDays: 7
-            },
-            description: `Deposit USDC to SimplifiedEscrow`
-          })
-        }
-        
+
         // Store pending transfer in database (no claimToken needed)
         await createPendingTransfer({
           transferId,
@@ -244,26 +208,123 @@ export async function POST(request: NextRequest) {
           createdAt: new Date(),
           updatedAt: new Date()
         })
-        
-        // Transaction record will be created in /send/complete after successful signing
-        // Don't create transaction here to avoid duplicates
-        
-        const response = {
-          success: true,
-          transferType: 'escrow',
-          recipient: {
-            email: recipient.email,
-          },
-          transfer: {
+
+        if (smartAccountMode) {
+          // For smart accounts, return simplified response - frontend handles user operations
+          console.log('🔍 SMART ACCOUNT ESCROW TRANSFER REQUEST:', {
             transferId,
-            expiryDate: expiryDate.toISOString(),
-          },
-          transactions,
-          requiresApproval: !hasAllowance,
-          message: `Ready to send ${amount} USDC via escrow to ${recipient.email}. ${!hasAllowance ? 'Approval required first. ' : ''}They will receive an email to claim the funds.`
+            amount,
+            smartAccountMode: true
+          })
+
+          // Check if allowance is needed (for information purposes)
+          const hasAllowance = await hasSufficientAllowance(
+            senderAddress as Address,
+            escrowAddress as Address,
+            amount
+          )
+
+          const response = {
+            success: true,
+            transferType: 'escrow',
+            smartAccountMode: true,
+            recipient: {
+              email: recipient.email,
+            },
+            transfer: {
+              transferId,
+              expiryDate: expiryDate.toISOString(),
+            },
+            escrowAddress,
+            requiresApproval: !hasAllowance,
+            message: `Ready to send ${amount} USDC via escrow to ${recipient.email} using smart account. ${!hasAllowance ? 'Approval required first. ' : ''}They will receive an email to claim the funds.`
+          }
+
+          return NextResponse.json(response)
+        } else {
+          // For EOA users, prepare traditional transactions
+          const hasAllowance = await hasSufficientAllowance(
+            senderAddress as Address,
+            escrowAddress as Address,
+            amount
+          )
+
+          // Prepare transactions - approval first if needed, then deposit
+          const transactions: Array<Record<string, unknown>> = []
+
+          if (!hasAllowance) {
+            // Prepare approval transaction for the correct escrow contract
+            const approvalTx = prepareUSDCApproval(
+              senderAddress as string,
+              escrowAddress as string,
+              amount
+            )
+            // Serialize BigInt values
+            const serializedApprovalTx = {
+              ...approvalTx,
+              value: approvalTx.value.toString(),
+              description: `Approve USDC for SimplifiedEscrow contract`
+            }
+            transactions.push(serializedApprovalTx)
+          }
+
+          // Prepare escrow deposit transaction (email hash only, no secrets)
+          // Only prepare if we have allowance, otherwise just store the parameters
+          if (hasAllowance) {
+            // Use SimplifiedEscrow contract
+            const { prepareSimplifiedEscrowDeposit } = await import('@/lib/simplified-escrow')
+            const depositTx = prepareSimplifiedEscrowDeposit({
+              transferId,
+              recipientEmail,
+              amount
+            })
+
+            // Serialize BigInt values
+            const serializedDepositTx = {
+              ...depositTx,
+              value: depositTx.value?.toString() || '0',
+              description: `Deposit USDC to SimplifiedEscrow`
+            }
+            transactions.push(serializedDepositTx)
+          } else {
+            // Store deposit parameters for later preparation after approval
+            transactions.push({
+              type: 'simplified_escrow_deposit',
+              parameters: {
+                senderAddress,
+                amount,
+                transferId,
+                recipientEmail,
+                timeoutDays: 7
+              },
+              description: `Deposit USDC to SimplifiedEscrow`
+            })
+          }
+
+          console.log('🔍 EOA ESCROW TRANSFER TRANSACTIONS:', {
+            transferId,
+            requiresApproval: !hasAllowance,
+            transactionCount: transactions.length
+          })
+
+          const response = {
+            success: true,
+            transferType: 'escrow',
+            smartAccountMode: false,
+            recipient: {
+              email: recipient.email,
+            },
+            transfer: {
+              transferId,
+              expiryDate: expiryDate.toISOString(),
+            },
+            transactions,
+            requiresApproval: !hasAllowance,
+            message: `Ready to send ${amount} USDC via escrow to ${recipient.email}. ${!hasAllowance ? 'Approval required first. ' : ''}They will receive an email to claim the funds.`
+          }
+
+          return NextResponse.json(serializeBigInt(response))
         }
-        
-        return NextResponse.json(serializeBigInt(response))
       } catch (error) {
         console.error('Escrow transfer preparation error:', error)
         return NextResponse.json(

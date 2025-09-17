@@ -13,6 +13,7 @@ interface RecipientInfo {
   email: string
   exists: boolean
   displayName?: string
+  walletAddress?: string
   transferType: 'direct' | 'escrow'
 }
 
