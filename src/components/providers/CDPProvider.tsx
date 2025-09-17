@@ -1,7 +1,7 @@
 "use client";
 
-import { CDPReactProvider } from '@coinbase/cdp-react/components/CDPReactProvider'
-import { CDP_CONFIG, APP_CONFIG } from '@/lib/cdp'
+import { CDPHooksProvider } from '@coinbase/cdp-hooks'
+import { CDP_CONFIG } from '@/lib/cdp'
 
 interface CDPProviderProps {
   children: React.ReactNode
@@ -9,11 +9,10 @@ interface CDPProviderProps {
 
 export function CDPProvider({ children }: CDPProviderProps) {
   return (
-    <CDPReactProvider
+    <CDPHooksProvider
       config={CDP_CONFIG}
-      app={APP_CONFIG}
     >
       {children}
-    </CDPReactProvider>
+    </CDPHooksProvider>
   )
 }

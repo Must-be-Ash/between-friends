@@ -5,6 +5,7 @@ import { useCurrentUser, useEvmAddress, useSignOut, useGetAccessToken } from '@c
 import { getUSDCBalance } from '@/lib/usdc'
 import { BalanceCard } from './BalanceCard'
 import { AccountInfoWithAvatar } from '@/components/dashboard/AccountInfoWithAvatar'
+import { SmartAccountStatus } from './SmartAccountStatus'
 import { NavigationDock } from '@/components/navigation/NavigationDock'
 import { QuickActions } from './QuickActions'
 import { LoadingScreen } from '@/components/shared/LoadingScreen'
@@ -213,6 +214,9 @@ export function Dashboard() {
 
           {/* Quick Actions */}
           <QuickActions />
+
+          {/* Smart Account Status */}
+          <SmartAccountStatus />
 
           {/* Account Info with Avatar */}
           <AccountInfoWithAvatar 

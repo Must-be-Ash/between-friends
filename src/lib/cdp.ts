@@ -88,7 +88,17 @@ export const CURRENT_NETWORK = (() => {
 
 // Default configurations that can be imported directly
 export const CDP_CONFIG = {
-  projectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID || ''
+  projectId: process.env.NEXT_PUBLIC_CDP_PROJECT_ID || '',
+  // Enable smart accounts for new users - this creates both EOA and smart account
+  createAccountOnLogin: "evm-smart" as const,
+  // Optional: Enable debugging for development
+  debugging: process.env.NODE_ENV === 'development'
+}
+
+// Paymaster configuration
+export const PAYMASTER_CONFIG = {
+  url: process.env.NEXT_PUBLIC_PAYMASTER_URL || '',
+  enabled: !!process.env.NEXT_PUBLIC_PAYMASTER_URL
 }
 
 export const APP_CONFIG = {
@@ -244,5 +254,125 @@ export function getCDPNetworkName(chainId?: number): 'base' | 'base-sepolia' {
       }
       
       return process.env.NODE_ENV === 'development' ? 'base-sepolia' : 'base'
+  }
+}
+
+// Smart Account utilities
+export interface SmartAccountCall {
+  to: `0x${string}`
+  value: bigint
+  data: `0x${string}`
+}
+
+export interface UserOperationOptions {
+  evmSmartAccount: string
+  network: 'base' | 'base-sepolia'
+  calls: SmartAccountCall[]
+  useCdpPaymaster?: boolean
+  paymasterUrl?: string
+}
+
+// Prepare USDC transfer call for smart account
+export function prepareUSDCTransferCall(
+  recipientAddress: string,
+  amount: string
+): SmartAccountCall {
+  const amountWei = parseUnits(amount, 6) // USDC has 6 decimals
+  
+  // Encode transfer function call: transfer(address to, uint256 amount)
+  const transferData = encodeFunctionData({
+    abi: [
+      {
+        name: 'transfer',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'to', type: 'address' },
+          { name: 'amount', type: 'uint256' }
+        ],
+        outputs: [{ name: '', type: 'bool' }]
+      }
+    ],
+    functionName: 'transfer',
+    args: [recipientAddress as `0x${string}`, amountWei]
+  })
+  
+  return {
+    to: CONTRACT_ADDRESSES.USDC[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.USDC] as `0x${string}`,
+    value: BigInt(0),
+    data: transferData
+  }
+}
+
+// Prepare USDC approval call for smart account
+export function prepareUSDCApprovalCall(
+  spenderAddress: string,
+  amount: string
+): SmartAccountCall {
+  const amountWei = parseUnits(amount, 6) // USDC has 6 decimals
+  
+  // Encode approve function call: approve(address spender, uint256 amount)
+  const approveData = encodeFunctionData({
+    abi: [
+      {
+        name: 'approve',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'spender', type: 'address' },
+          { name: 'amount', type: 'uint256' }
+        ],
+        outputs: [{ name: '', type: 'bool' }]
+      }
+    ],
+    functionName: 'approve',
+    args: [spenderAddress as `0x${string}`, amountWei]
+  })
+  
+  return {
+    to: CONTRACT_ADDRESSES.USDC[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.USDC] as `0x${string}`,
+    value: BigInt(0),
+    data: approveData
+  }
+}
+
+// Prepare escrow deposit call for smart account
+export function prepareEscrowDepositCall(
+  transferId: string,
+  amount: string,
+  recipientEmailHash: string,
+  timeoutDays: number = 7
+): SmartAccountCall {
+  const amountWei = parseUnits(amount, 6) // USDC has 6 decimals
+  
+  // Encode deposit function call
+  const depositData = encodeFunctionData({
+    abi: [
+      {
+        name: 'deposit',
+        type: 'function',
+        stateMutability: 'nonpayable',
+        inputs: [
+          { name: 'transferId', type: 'bytes32' },
+          { name: 'amount', type: 'uint256' },
+          { name: 'recipientEmailHash', type: 'bytes32' },
+          { name: 'timeoutDays', type: 'uint256' }
+        ],
+        outputs: []
+      }
+    ],
+    functionName: 'deposit',
+    args: [
+      transferId as `0x${string}`,
+      amountWei,
+      recipientEmailHash as `0x${string}`,
+      BigInt(timeoutDays)
+    ]
+  })
+  
+  return {
+    to: CONTRACT_ADDRESSES.SIMPLIFIED_ESCROW[CURRENT_NETWORK as keyof typeof CONTRACT_ADDRESSES.SIMPLIFIED_ESCROW] as `0x${string}`,
+    value: BigInt(0),
+    data: depositData
   }
 }

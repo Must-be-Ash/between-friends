@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useSendEvmTransaction, useGetAccessToken } from '@coinbase/cdp-hooks'
 import { formatUSDCWithSymbol } from '@/lib/utils'
 import { getCDPNetworkName } from '@/lib/cdp'
+import { useSmartAccount } from '@/hooks/useSmartAccount'
 
 interface RecipientInfo {
   email: string
@@ -34,11 +35,23 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState<string>('')
-  // const [showTransactionConfirmation, setShowTransactionConfirmation] = useState(false)
-  // const [pendingTransactionData, setPendingTransactionData] = useState<any>(null)
+  const [useSmartAccountMode, setUseSmartAccountMode] = useState(true) // Default to smart account
   
   const { recipient, amount } = transferData
   const isDirect = recipient.transferType === 'direct'
+  
+  // Smart account hook
+  const smartAccountHook = useSmartAccount()
+  const {
+    hasSmartAccount,
+    getGasSponsoringStatus,
+    getErrorMessage,
+    paymasterEnabled
+  } = smartAccountHook
+
+  const gasSponsoringStatus = getGasSponsoringStatus()
+  
+  // Fallback to regular EOA transaction
   const { sendEvmTransaction } = useSendEvmTransaction()
   const { getAccessToken } = useGetAccessToken()
 
@@ -49,6 +62,79 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
     setError(null)
     setCurrentStep('Preparing transaction...')
 
+    try {
+      // Use smart account if available and enabled
+      if (useSmartAccountMode && smartAccountHook.hasSmartAccount) {
+        await handleSmartAccountSend()
+      } else {
+        await handleEOASend()
+      }
+    } catch (error) {
+      console.error('❌ Send failed:', error)
+      // Use smart account error handler for better user-friendly messages
+      const errorMessage = getErrorMessage(error)
+      setError(errorMessage)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleSmartAccountSend = async () => {
+    setCurrentStep('Preparing smart account transaction...')
+    
+    if (isDirect) {
+      // Direct transfer using smart account
+      setCurrentStep('Sending USDC via smart account...')
+      
+      // For direct transfers, we need to get the recipient's wallet address from the API
+      const accessToken = await getAccessToken()
+      const userResponse = await fetch(`/api/users?email=${encodeURIComponent(recipient.email)}`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+
+      if (!userResponse.ok) {
+        throw new Error('Failed to get recipient wallet address')
+      }
+
+      const { user: recipientUser } = await userResponse.json()
+      const recipientAddress = recipientUser.walletAddress
+
+      if (!recipientAddress) {
+        throw new Error('Recipient wallet address not found')
+      }
+
+      const result = await smartAccountHook.sendDirectTransfer({
+        recipientAddress: recipientAddress,
+        amount: amount,
+        useGasSponsoring: true // Enable gas sponsoring
+      })
+      
+      console.log('✅ Smart Account Direct Transfer Result:', result)
+      onSuccess(result.userOperationHash)
+    } else {
+      // Escrow deposit using smart account
+      setCurrentStep('Creating escrow deposit via smart account...')
+      
+      // Generate a unique transfer ID
+      const transferId = `escrow_${Date.now()}_${Math.random().toString(36).substring(2)}`
+      
+      const result = await smartAccountHook.sendEscrowDeposit({
+        transferId,
+        amount: amount,
+        recipientEmail: recipient.email,
+        timeoutDays: 7,
+        useGasSponsoring: true // Enable gas sponsoring
+      })
+      
+      console.log('✅ Smart Account Escrow Deposit Result:', result)
+      onSuccess(result.userOperationHash)
+    }
+  }
+
+  const handleEOASend = async () => {
+    // Fallback to original EOA transaction logic
     try {
       // Get transaction data from API
       const accessToken = await getAccessToken()
@@ -324,6 +410,36 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       </div>
 
 
+      {/* Smart Account Toggle */}
+      {hasSmartAccount && (
+        <div className="bg-[#2A2A2A] rounded-xl p-4 border border-[#4A4A4A]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-full bg-[#5CB0FF]/20 flex items-center justify-center">
+                <svg className="w-4 h-4 text-[#5CB0FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <div className="font-medium text-white">Smart Account</div>
+                <div className="text-sm text-[#B8B8B8]">
+                  {gasSponsoringStatus.available ? 'Gas-free transactions' : 'Enhanced features'}
+                </div>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useSmartAccountMode}
+                onChange={(e) => setUseSmartAccountMode(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#5CB0FF]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#5CB0FF]"></div>
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Error Display */}
       {error && (
         <div className="bg-[#4A2A2A] rounded-2xl p-6 border border-[#6B3B3B] shadow-2xl">
@@ -335,6 +451,50 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               <h4 className="font-medium text-[#FFAAAA] mb-2">Transaction Failed</h4>
               <p className="text-[#CCAAAA] text-sm">{error}</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Account Status */}
+      {useSmartAccountMode && hasSmartAccount && (
+        <div className={`rounded-xl p-4 border ${
+          gasSponsoringStatus.available
+            ? 'bg-[#2A4A2A] border-[#4A6B4A]'
+            : 'bg-[#4A2A2A] border-[#6B3B3B]'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                gasSponsoringStatus.available ? 'bg-[#4CAF50]' : 'bg-[#F44336]'
+              }`}>
+                {gasSponsoringStatus.available ? (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <div className={`font-medium ${
+                  gasSponsoringStatus.available ? 'text-[#4CAF50]' : 'text-[#F44336]'
+                }`}>
+                  {gasSponsoringStatus.available ? 'Gas Sponsored' : 'Gas Required'}
+                </div>
+                <div className="text-sm text-[#B8B8B8]">
+                  {gasSponsoringStatus.message}
+                </div>
+              </div>
+            </div>
+
+            {paymasterEnabled && gasSponsoringStatus.available && (
+              <div className="flex items-center space-x-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#5CB0FF]"></div>
+                <span className="text-xs text-[#5CB0FF] font-medium">CDP</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -362,7 +522,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
               Processing...
             </div>
           ) : (
-            'Confirm'
+            useSmartAccountMode && hasSmartAccount && gasSponsoringStatus.available ? 'Send (Gas-Free)' : 'Confirm'
           )}
         </button>
       </div>
