@@ -50,8 +50,9 @@ async function cleanDatabase() {
     console.log('🔌 Connecting to MongoDB...');
     client = new MongoClient(MONGODB_URI);
     await client.connect();
-    
-    const db = client.db();
+
+    // Explicitly use the 'paypall' database
+    const db = client.db('paypall');
     console.log(`✅ Connected to database: ${db.databaseName}`);
     
     // List all collections first

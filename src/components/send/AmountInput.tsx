@@ -31,7 +31,7 @@ export function AmountInput({ amount, onAmountChange, userBalance, isLoadingBala
   }
 
   const handleMaxAmount = () => {
-    const maxAmount = Math.max(0, parseFloat(userBalance) - 0.01) // Leave small buffer for gas
+    const maxAmount = Math.max(0, parseFloat(userBalance)) // Use full balance
     onAmountChange(maxAmount.toFixed(2))
   }
 
