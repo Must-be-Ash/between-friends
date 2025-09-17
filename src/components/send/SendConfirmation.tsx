@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react'
-import { useSendEvmTransaction, useGetAccessToken, useSendUserOperation, useCurrentUser } from '@coinbase/cdp-hooks'
+import { useGetAccessToken, useSendUserOperation, useCurrentUser } from '@coinbase/cdp-hooks'
 import { formatUSDCWithSymbol } from '@/lib/utils'
 import { getCDPNetworkName, prepareUSDCTransferCall, prepareUSDCApprovalCall, prepareEscrowDepositCall } from '@/lib/cdp'
 import { keccak256, toBytes } from 'viem'
@@ -29,12 +29,11 @@ interface CDPUser {
 interface SendConfirmationProps {
   transferData: TransferData
   currentUser: CDPUser
-  evmAddress: string | null
   onSuccess: (txHash: string) => void
   onBack: () => void
 }
 
-export function SendConfirmation({ transferData, currentUser, evmAddress, onSuccess, onBack }: SendConfirmationProps) {
+export function SendConfirmation({ transferData, currentUser, onSuccess, onBack }: SendConfirmationProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState<string>('')
@@ -59,12 +58,10 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   const hasSmartAccount = !!smartAccount
   const gasSponsoringStatus = getGasSponsoringStatus()
   
-  // Fallback to regular EOA transaction
-  const { sendEvmTransaction } = useSendEvmTransaction()
   const { getAccessToken } = useGetAccessToken()
 
   const handleConfirmSend = async () => {
-    if (isProcessing || !evmAddress) return
+    if (isProcessing || !smartAccount) return
 
     setIsProcessing(true)
     setError(null)
@@ -134,14 +131,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       // Escrow deposit using smart account
       setCurrentStep('Creating escrow deposit via smart account...')
 
-      // Generate a unique transfer ID
-      const transferId = `escrow_${Date.now()}_${Math.random().toString(36).substring(2)}`
-
-      // Prepare escrow deposit call
-      const recipientEmailHash = keccak256(toBytes(recipient.email.toLowerCase()))
-      const escrowCall = prepareEscrowDepositCall(transferId, amount, recipientEmailHash, 7)
-
-      // Check if we need approval first
+      // First, call API to create the pending transfer and get the transferId
       const accessToken = await getAccessToken()
       const approvalResponse = await fetch('/api/send', {
         method: 'POST',
@@ -151,7 +141,7 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
         },
         body: JSON.stringify({
           userId: currentUser.userId,
-          senderAddress: evmAddress,
+          senderAddress: smartAccount,
           recipientEmail: recipient.email,
           amount: amount,
           smartAccountMode: true // Tell API we're using smart account
@@ -164,6 +154,16 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
       }
 
       const approvalData = await approvalResponse.json()
+
+      // Use the server-generated transferId from the API response
+      const transferId = approvalData.transfer?.transferId
+      if (!transferId) {
+        throw new Error('No transfer ID received from server')
+      }
+
+      // Prepare escrow deposit call with the server's transferId
+      const recipientEmailHash = keccak256(toBytes(recipient.email.toLowerCase()))
+      const escrowCall = prepareEscrowDepositCall(transferId, amount, recipientEmailHash, 7)
       const calls = []
 
       // Add approval call if needed
@@ -219,235 +219,8 @@ export function SendConfirmation({ transferData, currentUser, evmAddress, onSucc
   }
 
   const handleEOASend = async () => {
-    // Fallback to original EOA transaction logic
-    try {
-      // Get transaction data from API
-      const accessToken = await getAccessToken()
-      const response = await fetch('/api/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          userId: currentUser.userId,
-          senderAddress: evmAddress,
-          recipientEmail: recipient.email,
-          amount: amount
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to process transfer')
-      }
-
-      const result = await response.json()
-      let finalTxHash: string | null = null
-
-      if (result.transferType === 'direct') {
-        // Single transaction - direct USDC transfer
-        setCurrentStep('Sending USDC...')
-        
-        // Convert string values back to BigInt for CDP
-        console.log('🔍 RAW TRANSACTION FROM API:', result.transaction)
-        
-        const transaction = {
-          to: result.transaction.to as `0x${string}`,
-          data: result.transaction.data as `0x${string}`,
-          value: result.transaction.value ? BigInt(result.transaction.value) : 0n,
-          gas: result.transaction.gas ? BigInt(result.transaction.gas) : undefined,
-          maxFeePerGas: result.transaction.maxFeePerGas ? BigInt(result.transaction.maxFeePerGas) : undefined,
-          maxPriorityFeePerGas: result.transaction.maxPriorityFeePerGas ? BigInt(result.transaction.maxPriorityFeePerGas) : undefined,
-          chainId: result.transaction.chainId as number,
-          type: result.transaction.type as "eip1559",
-          ...(result.transaction.gasLimit && { gasLimit: BigInt(result.transaction.gasLimit) })
-        }
-        
-        console.log('🔍 CONVERTED TRANSACTION FOR CDP:', transaction)
-        
-        console.log('🔐 CDP TRANSACTION SIGNING:', {
-          type: 'Direct Transfer',
-          transaction: transaction,
-          evmAccount: evmAddress,
-          network: getCDPNetworkName(),
-          timestamp: new Date().toISOString()
-        })
-        
-        const txResult = await sendEvmTransaction({
-          transaction,
-          evmAccount: evmAddress as `0x${string}`,
-          network: getCDPNetworkName(),
-        })
-        
-        console.log('✅ CDP TRANSACTION RESULT:', {
-          transactionHash: txResult.transactionHash,
-          timestamp: new Date().toISOString()
-        })
-        
-        finalTxHash = txResult.transactionHash
-      } else {
-        // Multi-transaction - approval + escrow deposit
-        const transactions = result.transactions
-        
-        for (let i = 0; i < transactions.length; i++) {
-          const tx = transactions[i]
-          setCurrentStep(tx.description || `Transaction ${i + 1} of ${transactions.length}`)
-          
-          // If this is an escrow deposit that needs to be prepared after approval
-          if ((tx.type === 'escrow_deposit' || tx.type === 'simplified_escrow_deposit') && tx.parameters) {
-            let depositTx
-            
-            if (tx.type === 'simplified_escrow_deposit') {
-              // Prepare the new SimplifiedEscrow deposit transaction
-              const { prepareSimplifiedEscrowDeposit } = await import('@/lib/simplified-escrow')
-              const { amount, transferId, recipientEmail } = tx.parameters
-              
-              depositTx = prepareSimplifiedEscrowDeposit({
-                transferId,
-                recipientEmail,
-                amount
-              })
-            } else {
-              // This should not happen - only SimplifiedEscrow is supported
-              throw new Error('Legacy escrow deposit is no longer supported')
-            }
-            
-            console.log('🔐 CDP ESCROW DEPOSIT SIGNING:', {
-              type: tx.type === 'simplified_escrow_deposit' ? 'SimplifiedEscrow Deposit' : 'Legacy Escrow Deposit',
-              transaction: depositTx,
-              evmAccount: evmAddress,
-              network: getCDPNetworkName(),
-              step: `${i + 1}/${transactions.length}`,
-              timestamp: new Date().toISOString()
-            })
-            
-            const txResult = await sendEvmTransaction({
-              transaction: depositTx,
-              evmAccount: evmAddress as `0x${string}`,
-              network: getCDPNetworkName(),
-            })
-            
-            console.log('✅ CDP ESCROW DEPOSIT RESULT:', {
-              transactionHash: txResult.transactionHash,
-              timestamp: new Date().toISOString()
-            })
-            
-            finalTxHash = txResult.transactionHash
-          } else {
-            // Regular pre-prepared transaction - convert strings back to BigInt
-            const transaction = {
-              ...tx,
-              value: tx.value ? BigInt(tx.value) : 0n,
-              gas: tx.gas ? BigInt(tx.gas) : undefined,
-              maxFeePerGas: tx.maxFeePerGas ? BigInt(tx.maxFeePerGas) : undefined,
-              maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? BigInt(tx.maxPriorityFeePerGas) : undefined,
-            }
-            
-            console.log('🔐 CDP APPROVAL SIGNING:', {
-              type: 'USDC Approval',
-              transaction: transaction,
-              evmAccount: evmAddress,
-              network: getCDPNetworkName(),
-              step: `${i + 1}/${transactions.length}`,
-              description: tx.description,
-              timestamp: new Date().toISOString()
-            })
-            
-            const txResult = await sendEvmTransaction({
-              transaction,
-              evmAccount: evmAddress as `0x${string}`,
-              network: getCDPNetworkName(),
-            })
-            
-            console.log('✅ CDP APPROVAL RESULT:', {
-              transactionHash: txResult.transactionHash,
-              step: `${i + 1}/${transactions.length}`,
-              timestamp: new Date().toISOString()
-            })
-            
-            // If this is an approval transaction and there are more transactions, wait for confirmation
-            if (tx.description?.includes('Approve') && i < transactions.length - 1) {
-              setCurrentStep('Waiting for approval confirmation...')
-              console.log('⏳ Waiting for approval transaction to be confirmed before proceeding...')
-              
-              // Wait 2.5 seconds for the approval to be confirmed on-chain
-              await new Promise(resolve => setTimeout(resolve, 2500))
-            }
-            
-            // Store the final transaction hash (deposit transaction)
-            if (i === transactions.length - 1) {
-              finalTxHash = txResult.transactionHash
-            }
-          }
-        }
-        
-        // Update the transfer status in database
-        if (finalTxHash && result.transfer?.transferId) {
-          const accessTokenForUpdate = await getAccessToken()
-          await fetch('/api/send', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessTokenForUpdate}`,
-            },
-            body: JSON.stringify({
-              transferId: result.transfer.transferId,
-              txHash: finalTxHash,
-              transferType: 'escrow'
-            }),
-          })
-        }
-      }
-      
-      // Call completion API to record transaction in history
-      if (finalTxHash) {
-        try {
-          console.log('📝 RECORDING TRANSACTION IN HISTORY:', {
-            txHash: finalTxHash,
-            transferType: isDirect ? 'direct' : 'escrow',
-            recipient,
-            amount
-          })
-          
-          const accessTokenForComplete = await getAccessToken()
-          await fetch('/api/send/complete', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessTokenForComplete}`,
-            },
-            body: JSON.stringify({
-              userId: currentUser.userId,
-              txHash: finalTxHash,
-              transferType: isDirect ? 'direct' : 'escrow',
-              recipient: {
-                email: recipient.email,
-                displayName: recipient.displayName,
-                exists: recipient.exists,
-              },
-              amount: amount,
-              transferId: result.transfer?.transferId
-            }),
-          })
-          
-          console.log('✅ TRANSACTION HISTORY RECORDED SUCCESSFULLY')
-        } catch (historyError) {
-          console.error('Failed to record transaction history:', historyError)
-          // Don't fail the entire flow if history recording fails
-        }
-        
-        onSuccess(finalTxHash)
-      } else {
-        throw new Error('Transaction completed but no hash received')
-      }
-    } catch (error) {
-      console.error('Transfer error:', error)
-      setError(error instanceof Error ? error.message : 'Failed to process transfer')
-    } finally {
-      setIsProcessing(false)
-      setCurrentStep('')
-    }
+    // Legacy EOA flow - no longer supported since we only use smart accounts
+    throw new Error('EOA transactions are no longer supported. All transactions use smart accounts now.')
   }
 
   // Helper function to record transaction history

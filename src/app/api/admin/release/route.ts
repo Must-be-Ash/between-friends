@@ -8,6 +8,13 @@ import { Address, createWalletClient, createPublicClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { base, baseSepolia } from 'viem/chains'
 
+// CDP User type with smart accounts
+interface CDPUser {
+  userId?: string
+  email?: string
+  evmSmartAccounts?: string[]
+}
+
 // Validation schema (simplified - no claim token needed)
 const AdminReleaseRequestSchema = z.object({
   transferId: z.string().min(1, 'Transfer ID is required'),
@@ -119,13 +126,19 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Check if user has a wallet address
-    if (!claimer.walletAddress) {
+    // Get smart account address from CDP authentication
+    const cdpUser = authResult.user as CDPUser
+    const userSmartAccounts = cdpUser?.evmSmartAccounts
+    if (!userSmartAccounts || userSmartAccounts.length === 0) {
       return NextResponse.json(
-        { error: 'User does not have a wallet address set up' },
+        { error: 'User does not have a smart account set up' },
         { status: 400 }
       )
     }
+
+    // Use the first smart account (users only have smart accounts now)
+    const recipientAddress = userSmartAccounts[0]
+    console.log('📱 Releasing funds to smart account:', recipientAddress)
 
     try {
       // Set up admin wallet and public client for gas estimation
@@ -165,7 +178,7 @@ export async function POST(request: NextRequest) {
       const transaction = await prepareSimplifiedEscrowAdminRelease({
         transferId,
         recipientEmail: transfer.recipientEmail,
-        recipientAddress: claimer.walletAddress as Address
+        recipientAddress: recipientAddress as Address
       })
 
       // Send transaction from admin wallet (admin pays gas!)

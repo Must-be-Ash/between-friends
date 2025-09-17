@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useCurrentUser, useEvmAddress, useSignOut, useGetAccessToken } from '@coinbase/cdp-hooks'
+import { useCurrentUser, useSignOut, useGetAccessToken } from '@coinbase/cdp-hooks'
 import { getUSDCBalance } from '@/lib/usdc'
 import { BalanceCard } from './BalanceCard'
 import { AccountInfoWithAvatar } from '@/components/dashboard/AccountInfoWithAvatar'
@@ -32,7 +32,6 @@ interface DashboardPendingClaim {
 
 export function Dashboard() {
   const { currentUser } = useCurrentUser()
-  const { evmAddress } = useEvmAddress()
   const { signOut } = useSignOut()
   const { getAccessToken } = useGetAccessToken()
   
@@ -45,7 +44,14 @@ export function Dashboard() {
   const menuRef = useRef<HTMLDivElement>(null)
 
   const createUserProfile = useCallback(async (email: string) => {
-    if (!currentUser || !evmAddress) return
+    if (!currentUser) return
+
+    // Use smart account address instead of EOA
+    const smartAccountAddress = currentUser.evmSmartAccounts?.[0]
+    if (!smartAccountAddress) {
+      console.error('No smart account found for user')
+      return
+    }
 
     try {
       const accessToken = await getAccessToken()
@@ -58,7 +64,7 @@ export function Dashboard() {
         body: JSON.stringify({
           userId: currentUser.userId,
           email: email.toLowerCase(),
-          walletAddress: evmAddress,
+          walletAddress: smartAccountAddress, // Store smart account address
           displayName: email.split('@')[0], // Use email prefix as default display name
           profileSetupComplete: true,
         }),
@@ -81,7 +87,7 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error creating user profile:', error)
     }
-  }, [currentUser, evmAddress, getAccessToken])
+  }, [currentUser, getAccessToken])
 
   const fetchUserProfile = useCallback(async () => {
     if (!currentUser) return
@@ -105,7 +111,7 @@ export function Dashboard() {
         // Try to get email from storage (stored during auth)
         const storedEmail = getStorageItem('cdp_user_email')
         
-        if (storedEmail && evmAddress) {
+        if (storedEmail && currentUser?.evmSmartAccounts?.[0]) {
           // Auto-create profile for existing CDP user
           await createUserProfile(storedEmail)
         } else {
@@ -121,29 +127,33 @@ export function Dashboard() {
     } catch (error) {
       console.error('Error fetching user profile:', error)
     }
-  }, [currentUser, evmAddress, createUserProfile, getAccessToken])
+  }, [currentUser, createUserProfile, getAccessToken])
 
   const fetchBalance = useCallback(async () => {
-    if (!evmAddress) return
+    if (!currentUser) return
+
+    // Use smart account for balance
+    const smartAccountAddress = currentUser.evmSmartAccounts?.[0]
+    if (!smartAccountAddress) return
 
     setIsLoadingBalance(true)
     try {
-      const usdcBalance = await getUSDCBalance(evmAddress)
+      const usdcBalance = await getUSDCBalance(smartAccountAddress)
       setBalance(usdcBalance)
     } catch (error) {
       console.error('Error fetching balance:', error)
     } finally {
       setIsLoadingBalance(false)
     }
-  }, [evmAddress])
+  }, [currentUser])
 
   // Fetch user profile and balance
   useEffect(() => {
-    if (currentUser && evmAddress) {
+    if (currentUser && currentUser.evmSmartAccounts?.length) {
       fetchUserProfile()
       fetchBalance()
     }
-  }, [currentUser, evmAddress, fetchUserProfile, fetchBalance])
+  }, [currentUser, fetchUserProfile, fetchBalance])
 
   // Click outside to close menu
   useEffect(() => {
@@ -179,12 +189,12 @@ export function Dashboard() {
   }
 
   // Show claim onboarding for new users with pending transfers
-  if (showClaimOnboarding && pendingClaims.length > 0 && userProfile && currentUser && evmAddress) {
+  if (showClaimOnboarding && pendingClaims.length > 0 && userProfile && currentUser && currentUser.evmSmartAccounts?.[0]) {
     return (
       <ClaimOnboarding
         pendingClaims={pendingClaims}
         userEmail={userProfile.email}
-        walletAddress={evmAddress}
+        walletAddress={currentUser.evmSmartAccounts[0]}
         userId={currentUser.userId}
         onComplete={() => {
           setShowClaimOnboarding(false)
@@ -196,7 +206,7 @@ export function Dashboard() {
     )
   }
 
-  if (!currentUser || !evmAddress) {
+  if (!currentUser || !currentUser.evmSmartAccounts?.length) {
     return <LoadingScreen message="Loading dashboard..." />
   }
 
@@ -221,7 +231,7 @@ export function Dashboard() {
           {/* Account Info with Avatar */}
           <AccountInfoWithAvatar 
             user={userProfile}
-            walletAddress={evmAddress}
+            walletAddress={currentUser.evmSmartAccounts[0]}
             showLogoutMenu={showLogoutMenu}
             setShowLogoutMenu={setShowLogoutMenu}
             handleLogout={handleLogout}

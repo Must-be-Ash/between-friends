@@ -1,5 +1,5 @@
 // CDP (Coinbase Developer Platform) utilities
-import { parseUnits, encodeFunctionData } from 'viem'
+import { parseUnits, encodeFunctionData, keccak256, toBytes } from 'viem'
 
 export interface CDPConfig {
   projectId: string
@@ -344,7 +344,15 @@ export function prepareEscrowDepositCall(
   timeoutDays: number = 7
 ): SmartAccountCall {
   const amountWei = parseUnits(amount, 6) // USDC has 6 decimals
-  
+
+  // Convert transferId string to bytes32 hex
+  const transferIdBytes32 = keccak256(toBytes(transferId))
+
+  // Ensure recipientEmailHash has 0x prefix and is proper hex
+  const formattedEmailHash = recipientEmailHash.startsWith('0x')
+    ? recipientEmailHash as `0x${string}`
+    : `0x${recipientEmailHash}` as `0x${string}`
+
   // Encode deposit function call
   const depositData = encodeFunctionData({
     abi: [
@@ -363,9 +371,9 @@ export function prepareEscrowDepositCall(
     ],
     functionName: 'deposit',
     args: [
-      transferId as `0x${string}`,
+      transferIdBytes32,
       amountWei,
-      recipientEmailHash as `0x${string}`,
+      formattedEmailHash,
       BigInt(timeoutDays)
     ]
   })

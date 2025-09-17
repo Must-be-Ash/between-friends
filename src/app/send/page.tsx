@@ -205,7 +205,6 @@ export default function SendPage() {
             <SendConfirmation
               transferData={pendingTransferData}
               currentUser={currentUser}
-              evmAddress={evmAddress}
               onSuccess={handleConfirmationSuccess}
               onBack={handleConfirmationBack}
             />
