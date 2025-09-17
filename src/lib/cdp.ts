@@ -92,7 +92,16 @@ export const CDP_CONFIG = {
   // Enable smart accounts for new users - this creates both EOA and smart account
   createAccountOnLogin: "evm-smart" as const,
   // Optional: Enable debugging for development
-  debugging: process.env.NODE_ENV === 'development'
+  debugging: process.env.NODE_ENV === 'development',
+  // Mobile-specific configuration for better session persistence
+  ...(typeof window !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent) && {
+    // Enhanced session persistence for mobile browsers
+    sessionPersistence: {
+      enabled: true,
+      // Use multiple storage mechanisms for mobile reliability
+      storageTypes: ['localStorage', 'sessionStorage', 'memory']
+    }
+  })
 }
 
 // Paymaster configuration

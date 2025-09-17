@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { NetworkStatus } from '@/components/pwa/NetworkStatus'
 import { UpdateNotification } from '@/components/pwa/UpdateNotification'
+import { SessionMonitor } from '@/components/pwa/SessionMonitor'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -105,6 +106,7 @@ export default function RootLayout({
           <NetworkStatus />
           <InstallPrompt />
           <UpdateNotification />
+          <SessionMonitor />
         </CDPProvider>
         <Analytics />
       </body>
